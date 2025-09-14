@@ -1,25 +1,65 @@
-[tool.poetry]
-name = "vulnhuntr"
-version = "0.1.0"
-description = ""
-authors = ["Dan <dan@protectai.com>", "Marcello <marcello@protectai.com>"]
-readme = "README.md"
-
-[tool.poetry.scripts]
-vulnhuntr = 'vulnhuntr.__main__:run'
-
-[tool.poetry.dependencies]
-python = "^3.10"
-rich = "^13.7.1"
-pydantic-xml = "^2.11.0"
-pydantic = "^2.8.0"
-anthropic = "^0.30.1"
-structlog = "^24.2.0"
-jedi = "0.18.0"
-parso = "0.8.0"
-openai = "^1.51.2"
-python-dotenv = "^1.0.0"
-
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vulnhuntr2"
+version = "0.1.0"
+description = "Mutation-driven smart contract security analysis with guard fragility scoring."
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "Your Name", email = "you@example.com" }]
+requires-python = ">=3.12,<3.13"
+
+dependencies = [
+    "rich>=13.7.1",
+    "typer>=0.12.3",
+    "python-dotenv==1.0.0",
+    "tqdm>=4.66.0",
+    "typing-extensions>=4.12.0",
+    "urllib3>=2.2.0",
+    "pydantic>=2.7.0",
+    "tree-sitter>=0.21.0",
+    "regex>=2024.5.15",
+]
+
+[project.optional-dependencies]
+llm = ["openai>=1.35.0", "tenacity>=8.2.3"]
+mutation = ["tree-sitter-languages>=1.10.2"]
+ml = ["transformers>=4.41.0", "tokenizers>=0.19.1"]
+full = [
+    "openai>=1.35.0",
+    "tenacity>=8.2.3",
+    "tree-sitter-languages>=1.10.2",
+    "transformers>=4.41.0",
+    "tokenizers>=0.19.1",
+]
+dev = [
+    "pytest>=8.2.0",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.4.7",
+    "black>=24.4.2",
+    "mypy>=1.10.0",
+]
+
+[project.scripts]
+vulnhuntr = "vulnhuntr.cli:app"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+include = ["vulnhuntr*"]
+exclude = ["tests*", "examples*", "vulnhunt*"]
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.mypy]
+python_version = "3.12"
+warn_unused_configs = true
