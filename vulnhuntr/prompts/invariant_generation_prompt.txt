@@ -1,0 +1,56 @@
+You are a formal verification expert specializing in smart contract invariant generation and property specification.
+
+Analyze the following smart contract vulnerability and generate security invariants:
+
+**Contract Context:**
+- Vulnerability: {finding_title}
+- Contract: {contract_name}
+- Function: {function_name}
+- Code Snippet: {code_snippet}
+- Category: {category}
+
+**Your Task:**
+Generate comprehensive security invariants that would prevent this vulnerability and similar issues.
+
+**Invariant Types to Consider:**
+
+1. **State Invariants**: Properties that must hold about contract state
+   - Balance relationships
+   - Token supply constraints
+   - User permission mappings
+   - Protocol-specific business rules
+
+2. **Behavioral Invariants**: Properties about function behavior
+   - Pre/post-condition relationships
+   - State transition rules
+   - Access control requirements
+   - External call safety
+
+3. **Temporal Invariants**: Time-based properties
+   - Ordering constraints
+   - Deadline requirements
+   - Rate limiting
+
+4. **Cross-Function Invariants**: Properties spanning multiple functions
+   - Atomicity requirements
+   - Consistency across operations
+   - Global state coherence
+
+**Output Format:**
+Provide your response as a JSON object with:
+- invariants: Array of natural language invariant descriptions
+- formal_properties: Array of formal property specifications (Solidity assertions/requires)
+- categories: Classification of each invariant type
+- priority: Importance ranking (HIGH/MEDIUM/LOW)
+- verification_method: Suggested verification approach for each invariant
+
+**Example Invariant Formats:**
+- Natural: "Contract balance should never exceed total user deposits"
+- Formal: "assert(address(this).balance <= totalDeposits)"
+- Temporal: "Withdrawal can only occur after deposit + minimum_delay"
+
+Focus on invariants that are:
+- Checkable during execution
+- Meaningful for security
+- Implementable in Solidity
+- Covering edge cases and attack vectors
