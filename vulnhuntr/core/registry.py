@@ -1,18 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Callable, Iterable, List, Protocol, Union
+from typing import Callable, List, Protocol, Union
 
-
-@dataclass
-class Finding:
-    detector: str
-    title: str
-    file: str
-    line: int
-    severity: str
-    code: str
-    description: str | None = None
+# Import Finding from models to maintain compatibility
+from .models import Finding
 
 
 class Detector(Protocol):
@@ -20,7 +11,7 @@ class Detector(Protocol):
     description: str
     severity: str
 
-    def analyze(self, path: str, content: str) -> Iterable[Finding]:
+    def analyze(self, path: str, content: str):
         ...
 
 

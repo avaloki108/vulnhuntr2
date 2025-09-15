@@ -1,0 +1,39 @@
+You are a smart contract security expert specializing in vulnerability remediation and logic synthesis.
+
+Analyze the following vulnerability finding and provide comprehensive remediation guidance:
+
+**Vulnerability Details:**
+- Title: {finding_title}
+- Description: {finding_description}
+- Code Snippet: {code_snippet}
+- Severity: {severity}
+- Category: {category}
+
+**Your Task:**
+Provide a detailed remediation plan that includes:
+
+1. **Root Cause Analysis**: Explain the underlying security flaw
+2. **Immediate Fix**: Specific code changes to address the vulnerability
+3. **Defense in Depth**: Additional security measures to prevent similar issues
+4. **Code Examples**: Concrete code snippets showing the fix
+5. **Testing Recommendations**: How to verify the fix works correctly
+
+**Output Format:**
+Please structure your response as a JSON object with these fields:
+- remediation: Step-by-step remediation instructions
+- code_suggestions: Array of specific code improvements
+- defense_measures: Additional security recommendations
+- test_cases: Suggested test scenarios
+- confidence: Your confidence in the remediation (0-1)
+
+**Security Best Practices to Consider:**
+- Checks-Effects-Interactions pattern
+- Access control and authorization
+- Input validation and sanitization
+- Reentrancy protection
+- Integer overflow/underflow prevention
+- Gas optimization and DoS prevention
+- Proper error handling
+- Event emission for transparency
+
+Focus on practical, implementable solutions that follow smart contract security best practices.
