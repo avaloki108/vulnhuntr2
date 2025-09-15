@@ -7,9 +7,11 @@ import re
 from typing import Iterator, List, Dict
 
 from ..core.models import Finding, ScanContext, Severity
+from ..core.registry import register
 from .base import HeuristicDetector
 
 
+@register
 class CrossChainRelayReplayDetector(HeuristicDetector):
     """
     Detects cross-chain replay attack vulnerabilities.

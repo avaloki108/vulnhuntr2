@@ -7,9 +7,11 @@ import re
 from typing import Iterator, Set, Dict, List
 
 from ..core.models import Finding, ScanContext, Severity
+from ..core.registry import register
 from .base import HeuristicDetector
 
 
+@register
 class PrivilegeEscalationPathDetector(HeuristicDetector):
     """
     Detects privilege escalation vulnerabilities and access control bypasses.

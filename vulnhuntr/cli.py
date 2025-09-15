@@ -9,6 +9,9 @@ from rich.console import Console
 from rich.table import Table
 from rich import box
 
+# Import detectors package to trigger registration
+from . import detectors  # noqa: F401
+
 from .core.orchestrator import Orchestrator
 from .core.registry import get_registered_detectors
 from .core.models import ScanContext

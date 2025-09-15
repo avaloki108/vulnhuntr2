@@ -12,7 +12,7 @@ def run_cli(*args: str):
 def test_list_detectors(tmp_path):
     result = run_cli("list-detectors")
     assert result.returncode == 0
-    assert "Registered Detectors" in result.stdout
+    assert "Available Detectors" in result.stdout
 
 
 def test_scan_json_output(tmp_path):

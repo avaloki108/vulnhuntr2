@@ -33,6 +33,26 @@ class Severity(Enum):
     def from_string(cls, value: str) -> Severity:
         """Create severity from string, case-insensitive."""
         return cls(value.upper())
+    
+    def __lt__(self, other):
+        if isinstance(other, Severity):
+            return self.score < other.score
+        return NotImplemented
+    
+    def __le__(self, other):
+        if isinstance(other, Severity):
+            return self.score <= other.score
+        return NotImplemented
+    
+    def __gt__(self, other):
+        if isinstance(other, Severity):
+            return self.score > other.score
+        return NotImplemented
+    
+    def __ge__(self, other):
+        if isinstance(other, Severity):
+            return self.score >= other.score
+        return NotImplemented
 
 
 @dataclass

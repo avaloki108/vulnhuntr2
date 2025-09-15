@@ -138,6 +138,7 @@ class PoCGenerator:
             "vulnerability_description": finding.description or "No description provided",
             "target_line": str(finding.line),
             "severity": finding.severity.value,
+            "category": finding.category,
             "attacker_contract": f"{contract_name}Attacker",
             "exploit_function": f"exploit{function_name.title()}",
             "contract_functions": self._extract_function_signatures(contract_info) if contract_info else [],
@@ -383,7 +384,7 @@ import "./{contract_name}.sol";
 /**
  * Proof of Concept: {vulnerability_title}
  * Target: {contract_name}.{function_name} (Line {target_line})
- * Category: {finding.category}
+ * Category: {category}
  * Severity: {severity}
  */
 contract {attacker_contract} {{

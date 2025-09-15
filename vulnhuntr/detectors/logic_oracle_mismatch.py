@@ -7,9 +7,11 @@ import re
 from typing import Iterator
 
 from ..core.models import Finding, ScanContext, Severity
+from ..core.registry import register
 from .base import HeuristicDetector
 
 
+@register
 class LogicOracleMismatchDetector(HeuristicDetector):
     """
     Detects potential mismatches between oracle price feeds and business logic assumptions.

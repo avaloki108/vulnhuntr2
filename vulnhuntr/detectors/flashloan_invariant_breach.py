@@ -7,9 +7,11 @@ import re
 from typing import Iterator, Set, List
 
 from ..core.models import Finding, ScanContext, Severity
+from ..core.registry import register
 from .base import HeuristicDetector
 
 
+@register
 class FlashLoanInvariantBreachDetector(HeuristicDetector):
     """
     Detects flash loan invariant violations and atomicity abuse patterns.
