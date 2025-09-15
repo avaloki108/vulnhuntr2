@@ -4,7 +4,7 @@ Privilege Escalation Path Detector - detects privilege escalation vulnerabilitie
 from __future__ import annotations
 
 import re
-from typing import Iterator, Set, Dict, List
+from typing import Iterator
 
 from ..core.models import Finding, ScanContext, Severity
 from ..core.registry import register
@@ -116,6 +116,10 @@ class PrivilegeEscalationPathDetector(HeuristicDetector):
             yield from self._analyze_role_hierarchies(contract, context)
             yield from self._analyze_proxy_patterns(contract, context)
             yield from self._analyze_initialization_patterns(contract, context)
+        
+        # Enhanced Slither analysis if available
+        if "slither" in context.tool_artifacts:
+            yield from self._analyze_with_slither(context)
     
     def _analyze_access_control_patterns(self, contract, context: ScanContext) -> Iterator[Finding]:
         """Analyze access control implementation patterns."""
@@ -419,3 +423,37 @@ class PrivilegeEscalationPathDetector(HeuristicDetector):
             func_end = len(content)
         
         return content[func_start:func_end]
+    
+    def _analyze_with_slither(self, context: ScanContext) -> Iterator[Finding]:
+        """Enhanced analysis using Slither metadata."""
+        slither_result = context.tool_artifacts["slither"]
+        
+        for contract_info in slither_result.contracts:
+            # Analyze functions for privilege escalation using Slither metadata
+            for func_info in contract_info.functions:
+                # Check critical functions without access control modifiers
+                if self._is_critical_function(func_info.name):
+                    if func_info.visibility in ["public", "external"]:
+                        # Check if function has access control modifiers
+                        has_access_control = any(
+                            mod for mod in func_info.modifiers 
+                            if any(access_term in mod.lower() for access_term in ['only', 'require', 'auth'])
+                        )
+                        
+                        if not has_access_control:
+                            # Create enhanced finding with Slither metadata
+                            finding = self.create_finding(
+                                title=f"Critical function {func_info.name} lacks access control",
+                                file_path=contract_info.file,
+                                line=func_info.line_start,
+                                code=f"function {func_info.name}(...) {func_info.visibility} {func_info.mutability}",
+                                description=f"Critical function {func_info.name} is {func_info.visibility} but lacks access control modifiers",
+                                function_name=func_info.name,
+                                contract_name=contract_info.name,
+                                confidence=0.9,
+                                severity=Severity.HIGH
+                            )
+                            # Add Slither enrichment tag and higher confidence
+                            finding.tags.add("slither_enriched")
+                            finding.confidence = 0.95  # Higher confidence due to precise metadata
+                            yield finding

@@ -4,7 +4,7 @@ Eventless Critical Action Detector - detects critical operations without proper 
 from __future__ import annotations
 
 import re
-from typing import Iterator, List
+from typing import Iterator
 
 from ..core.models import Finding, ScanContext, Severity
 from ..core.registry import register
@@ -106,6 +106,10 @@ class EventlessCriticalActionDetector(HeuristicDetector):
             yield from self._analyze_critical_functions(contract, context)
             yield from self._analyze_erc20_compliance(contract, context)
             yield from self._analyze_access_control_events(contract, context)
+        
+        # Enhanced Slither analysis if available
+        if "slither" in context.tool_artifacts:
+            yield from self._analyze_with_slither(context)
     
     def _analyze_critical_functions(self, contract, context: ScanContext) -> Iterator[Finding]:
         """Analyze critical functions for proper event emission."""
@@ -266,3 +270,40 @@ class EventlessCriticalActionDetector(HeuristicDetector):
             func_end = len(content)
         
         return content[func_start:func_end]
+    
+    def _analyze_with_slither(self, context: ScanContext) -> Iterator[Finding]:
+        """Enhanced analysis using Slither metadata."""
+        slither_result = context.tool_artifacts["slither"]
+        
+        for contract_info in slither_result.contracts:
+            # Analyze functions for missing events using Slither metadata
+            for func_info in contract_info.functions:
+                if self._is_critical_function_slither(func_info.name):
+                    # Check if function has no emitted events
+                    if not func_info.events_emitted:
+                        # Create enhanced finding with Slither metadata
+                        finding = self.create_finding(
+                            title=f"Critical function {func_info.name} lacks event emission",
+                            file_path=contract_info.file,
+                            line=func_info.line_start,
+                            code=f"function {func_info.name}(...) {func_info.visibility} {func_info.mutability}",
+                            description=f"Function {func_info.name} performs critical operations without emitting events for transparency",
+                            function_name=func_info.name,
+                            contract_name=contract_info.name,
+                            confidence=0.8,
+                            severity=Severity.MEDIUM
+                        )
+                        # Add Slither enrichment tag
+                        finding.tags.add("slither_enriched")
+                        yield finding
+    
+    def _is_critical_function_slither(self, func_name: str) -> bool:
+        """Check if function name indicates critical functionality (Slither version)."""
+        critical_keywords = [
+            'withdraw', 'transfer', 'mint', 'burn', 'destroy', 'kill',
+            'upgrade', 'pause', 'emergency', 'admin', 'owner', 'manage',
+            'updatePrice', 'setPrice', 'emergencyWithdraw'
+        ]
+        
+        func_lower = func_name.lower()
+        return any(keyword in func_lower for keyword in critical_keywords)
