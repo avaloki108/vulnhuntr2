@@ -4,7 +4,7 @@ Eventless Critical Action Detector - detects critical operations without proper 
 from __future__ import annotations
 
 import re
-from typing import Iterator, List
+from typing import Iterator
 
 from ..core.models import Finding, ScanContext, Severity
 from ..core.registry import register

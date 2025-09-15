@@ -23,7 +23,7 @@ console = Console()
 @app.command()
 def list_detectors():
     """List all available detectors."""
-    detectors = get_registered_detectors()
+    detectors_list = get_registered_detectors()
     
     table = Table(title="Available Detectors", box=box.ROUNDED)
     table.add_column("Name", style="cyan", no_wrap=True)
@@ -31,7 +31,7 @@ def list_detectors():
     table.add_column("Severity", style="red")
     table.add_column("Category", style="green")
     
-    for detector in detectors:
+    for detector in detectors_list:
         severity = getattr(detector, 'severity', 'UNKNOWN')
         category = getattr(detector, 'category', 'unknown')
         
@@ -49,7 +49,7 @@ def list_detectors():
         )
     
     console.print(table)
-    console.print(f"\n[bold green]Total detectors registered: {len(detectors)}[/bold green]")
+    console.print(f"\n[bold green]Total detectors registered: {len(detectors_list)}[/bold green]")
 
 
 @app.command()

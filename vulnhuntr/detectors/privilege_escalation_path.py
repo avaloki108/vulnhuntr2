@@ -4,7 +4,7 @@ Privilege Escalation Path Detector - detects privilege escalation vulnerabilitie
 from __future__ import annotations
 
 import re
-from typing import Iterator, Set, Dict, List
+from typing import Iterator
 
 from ..core.models import Finding, ScanContext, Severity
 from ..core.registry import register

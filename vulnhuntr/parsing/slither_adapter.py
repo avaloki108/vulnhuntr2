@@ -7,17 +7,13 @@ state variables, events, and inheritance information.
 """
 from __future__ import annotations
 
-import json
-import subprocess
-import tempfile
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
 try:
     from slither import Slither
-    from slither.core.declarations import Contract, Function, StateVariable
-    from slither.core.variables.event_variable import EventVariable
+    from slither.core.declarations import Contract, Function
     SLITHER_AVAILABLE = True
 except ImportError:
     SLITHER_AVAILABLE = False
@@ -190,7 +186,7 @@ def _extract_function_info(func: "Function") -> FunctionInfo:
                     if 'emit' in str(ir):
                         # This is a simplified extraction - in real usage you'd parse more carefully
                         events_emitted.append(str(ir))
-    except:
+    except Exception:
         # If extraction fails, continue without events
         pass
     
