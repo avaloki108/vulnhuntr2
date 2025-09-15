@@ -63,6 +63,8 @@ def scan(
     enable_poc: bool = typer.Option(False, "--poc", help="Generate proof-of-concept exploits"),
     poc_output_dir: Optional[Path] = typer.Option(None, "--poc-dir", help="Directory to write PoC files"),
     min_severity: str = typer.Option("INFO", "--min-severity", help="Minimum severity to report (CRITICAL/HIGH/MEDIUM/LOW/INFO)"),
+    use_slither: bool = typer.Option(False, "--use-slither/--no-use-slither", help="Enable Slither static analysis for enhanced metadata"),
+    slither_json: Optional[Path] = typer.Option(None, "--slither-json", help="Write raw Slither analysis to JSON file"),
 ):
     """Scan a file or directory for potential vulnerabilities with advanced analysis."""
     
@@ -71,6 +73,7 @@ def scan(
     from .core.llm_synthesis import LLMSynthesisEngine
     from .core.poc_generator import PoCGenerator
     from .core.models import Severity
+    from .parsing.slither_adapter import run_slither
     
     console.print(f"[bold blue]🔍 Scanning {target}[/bold blue]")
     
@@ -81,6 +84,29 @@ def scan(
         enable_correlation=enable_correlation,
         enable_poc_generation=enable_poc
     )
+    
+    # Run Slither analysis if requested
+    if use_slither:
+        console.print("[yellow]🔍 Running Slither static analysis...[/yellow]")
+        try:
+            slither_result = run_slither(target)
+            if slither_result:
+                context.tool_artifacts["slither"] = slither_result
+                console.print(f"[green]✅ Analyzed {len(slither_result.contracts)} contracts with Slither[/green]")
+                
+                # Count functions across all contracts
+                total_functions = sum(len(contract.functions) for contract in slither_result.contracts)
+                console.print(f"[green]   Found {len(slither_result.contracts)} contracts, {total_functions} functions[/green]")
+                
+                # Save raw Slither output if requested
+                if slither_json:
+                    with open(slither_json, 'w') as f:
+                        json.dump(slither_result.to_dict(), f, indent=2)
+                    console.print(f"[blue]💾 Raw Slither analysis saved to {slither_json}[/blue]")
+            else:
+                console.print("[yellow]⚠️  Slither not available or analysis failed, continuing with heuristic detectors[/yellow]")
+        except Exception as e:
+            console.print(f"[yellow]⚠️  Slither analysis failed: {e}, continuing with heuristic detectors[/yellow]")
     
     # Run orchestrator
     orch = Orchestrator()

@@ -90,6 +90,7 @@ class ScanContext:
     target_path: Path
     contracts: List[ContractInfo] = field(default_factory=list)
     config: Dict[str, Any] = field(default_factory=dict)
+    tool_artifacts: Dict[str, Any] = field(default_factory=dict)
     
     # Analysis options
     enable_llm: bool = False

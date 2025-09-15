@@ -27,12 +27,15 @@ dependencies = [
 llm = ["openai>=1.35.0", "tenacity>=8.2.3"]
 mutation = ["tree-sitter-languages>=1.10.2"]
 ml = ["transformers>=4.41.0", "tokenizers>=0.19.1"]
+static = ["slither-analyzer>=0.10.0"]
+# mythril = ["mythril>=0.24.0"]  # Placeholder for future mythril integration
 full = [
     "openai>=1.35.0",
     "tenacity>=8.2.3",
     "tree-sitter-languages>=1.10.2",
     "transformers>=4.41.0",
     "tokenizers>=0.19.1",
+    "slither-analyzer>=0.10.0",
 ]
 dev = [
     "pytest>=8.2.0",
