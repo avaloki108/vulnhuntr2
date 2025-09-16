@@ -187,7 +187,7 @@ class InvariantParser:
             return False, "Unbalanced parentheses"
         
         # Check for valid tokens (simplified)
-        tokens = re.findall(r'\w+|[=!<>]+|[+\-*/()&|]', expr)
+        tokens = re.findall(r'\w+|[=!<>&|]+|[+\-*/()%]', expr)
         for token in tokens:
             if token.isalpha() and token not in self.valid_functions:
                 # Could be a variable name - that's ok
@@ -198,7 +198,7 @@ class InvariantParser:
                 continue
             else:
                 # Allow some common patterns
-                if token in ['(', ')', '.', '_']:
+                if token in ['(', ')', '.', '_', '&', '|']:
                     continue
                 return False, f"Invalid token: {token}"
         

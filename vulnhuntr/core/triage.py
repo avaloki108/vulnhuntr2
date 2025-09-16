@@ -29,6 +29,11 @@ class TriageResult:
     model: str = ""
     created_at_utc: str = ""
     
+    # Phase 6: Two-model consensus fields
+    consensus_status: str = "aligned"  # "aligned", "disputed"
+    divergence_score: float = 0.0  # 0.0 to 1.0, higher = more divergent
+    secondary_model_result: Optional[Dict[str, Any]] = None
+    
     # Internal metadata
     triage_status: str = "success"  # success, timeout, error
     cache_hit: bool = False
@@ -49,6 +54,11 @@ class TriageEngine:
         self.llm_client = None
         if config.enable:
             self._initialize_llm_client()
+        
+        # Phase 6: Two-model setup
+        self.cheap_model = getattr(config, 'cheap_model', 'gpt-3.5-turbo')
+        self.main_model = config.model
+        self.consensus_enabled = getattr(config, 'consensus_two_model', True)
     
     def triage_findings(self, findings: List[Finding], context: ScanContext) -> Dict[str, TriageResult]:
         """
@@ -148,24 +158,38 @@ class TriageEngine:
             return self._create_fallback_result(finding, "LLM client not available")
         
         try:
-            # Prepare sanitized evidence
-            evidence = self._prepare_evidence(finding, context)
+            # Check cache first
+            finding_id = f"{finding.detector}_{finding.file.split('/')[-1]}_{finding.line}"
+            cached_result = self._get_cached_result(finding_id, finding)
+            if cached_result:
+                cached_result.cache_hit = True
+                return cached_result
             
-            # Generate prompt
-            prompt = self._create_triage_prompt(evidence)
+            # Phase 6: Use two-model consensus if enabled
+            if self.consensus_enabled:
+                triage_result = self._run_two_model_consensus(finding)
+            else:
+                # Prepare sanitized evidence
+                evidence = self._prepare_evidence(finding, context)
+                
+                # Generate prompt
+                prompt = self._create_triage_prompt(evidence)
+                
+                # Call LLM with timeout
+                start_time = time.time()
+                response = self._call_llm(prompt)
+                elapsed = time.time() - start_time
+                
+                if elapsed > self.config.timeout:
+                    return self._create_fallback_result(finding, "timeout")
+                
+                # Parse response
+                triage_result = self._parse_llm_response(response, finding)
+                triage_result.model = self.config.model
+                triage_result.created_at_utc = datetime.now(timezone.utc).isoformat()
             
-            # Call LLM with timeout
-            start_time = time.time()
-            response = self._call_llm(prompt)
-            elapsed = time.time() - start_time
-            
-            if elapsed > self.config.timeout:
-                return self._create_fallback_result(finding, "timeout")
-            
-            # Parse response
-            triage_result = self._parse_llm_response(response, finding)
-            triage_result.model = self.config.model
-            triage_result.created_at_utc = datetime.now(timezone.utc).isoformat()
+            # Cache result
+            self._cache_result(finding_id, finding, triage_result)
             
             return triage_result
             
@@ -385,6 +409,136 @@ Focus on:
         # For now, just mark as available
         self.llm_client = "mock_client"
         self.logger.info(f"Initialized {self.config.provider} client for model {self.config.model}")
+    
+    def _run_two_model_consensus(self, finding: Finding) -> TriageResult:
+        """Run two-model consensus triage (Phase 6)."""
+        if not self.consensus_enabled:
+            return self._run_single_model_triage(finding)
+        
+        # Run cheap model first
+        cheap_result = self._run_model_triage(finding, self.cheap_model)
+        
+        # Run main model
+        main_result = self._run_model_triage(finding, self.main_model)
+        
+        # Compare results and calculate divergence
+        divergence_score = self._calculate_divergence(cheap_result, main_result)
+        
+        # Determine consensus status
+        consensus_status = "aligned" if divergence_score < 0.3 else "disputed"
+        
+        # Use main model result as primary, but include consensus metadata
+        main_result.consensus_status = consensus_status
+        main_result.divergence_score = divergence_score
+        main_result.secondary_model_result = {
+            "model": self.cheap_model,
+            "risk_summary": cheap_result.risk_summary,
+            "false_positive_likelihood": cheap_result.false_positive_likelihood,
+            "rationale_tokens": cheap_result.rationale_tokens
+        }
+        
+        return main_result
+    
+    def _run_single_model_triage(self, finding: Finding) -> TriageResult:
+        """Run single model triage (fallback)."""
+        return self._run_model_triage(finding, self.main_model)
+    
+    def _run_model_triage(self, finding: Finding, model: str) -> TriageResult:
+        """Run triage with a specific model."""
+        # Prepare evidence
+        evidence = self._prepare_evidence(finding, ScanContext(target_path=Path(finding.file)))
+        
+        # Generate prompt
+        prompt = self._create_triage_prompt(evidence)
+        
+        # Call LLM
+        response = self._call_llm_with_model(prompt, model)
+        result = self._parse_llm_response(response, finding)
+        result.model = model
+        result.created_at_utc = datetime.now(timezone.utc).isoformat()
+        return result
+    
+    def _call_llm_with_model(self, prompt: str, model: str) -> str:
+        """Call LLM API with specific model."""
+        if not self.llm_client:
+            raise RuntimeError("LLM client not initialized")
+        
+        # Mock response that varies by model
+        if "3.5" in model or "cheap" in model:
+            # Shorter, simpler response for cheap model
+            return '''
+{
+    "risk_summary": "Possible reentrancy in withdraw function",
+    "exploit_hypothesis": "Function may be vulnerable to reentrancy attacks",
+    "remediation_actions": ["Add reentrancy guard"],
+    "false_positive_likelihood": 0.3,
+    "rationale_tokens": ["external_call", "state_change"]
+}
+'''
+        else:
+            # More detailed response for main model
+            return '''
+{
+    "risk_summary": "Critical reentrancy vulnerability in withdraw function with potential for complete fund drainage",
+    "exploit_hypothesis": "Attacker could exploit the lack of checks-effects-interactions pattern to recursively call withdraw before balance updates, potentially draining all contract funds",
+    "remediation_actions": ["Implement strict checks-effects-interactions pattern", "Add ReentrancyGuard modifier", "Update balances before external calls", "Consider using pull payment pattern"],
+    "false_positive_likelihood": 0.15,
+    "rationale_tokens": ["external_call", "state_modification", "balance_update", "funds_transfer", "reentrancy_pattern"]
+}
+'''
+    
+    def _calculate_divergence(self, result1: TriageResult, result2: TriageResult) -> float:
+        """Calculate divergence score between two triage results."""
+        divergence_factors = []
+        
+        # Compare false positive likelihood
+        fp_diff = abs(result1.false_positive_likelihood - result2.false_positive_likelihood)
+        divergence_factors.append(fp_diff)
+        
+        # Compare semantic similarity of risk summaries (simplified)
+        risk_similarity = self._calculate_text_similarity(result1.risk_summary, result2.risk_summary)
+        divergence_factors.append(1.0 - risk_similarity)
+        
+        # Compare remediation action overlap
+        remediation_overlap = self._calculate_list_overlap(result1.remediation_actions, result2.remediation_actions)
+        divergence_factors.append(1.0 - remediation_overlap)
+        
+        # Compare rationale token overlap
+        token_overlap = self._calculate_list_overlap(result1.rationale_tokens, result2.rationale_tokens)
+        divergence_factors.append(1.0 - token_overlap)
+        
+        # Return average divergence
+        return sum(divergence_factors) / len(divergence_factors) if divergence_factors else 0.0
+    
+    def _calculate_text_similarity(self, text1: str, text2: str) -> float:
+        """Calculate simple text similarity (fallback for embedding similarity)."""
+        if not text1 or not text2:
+            return 0.0
+        
+        # Simple word overlap similarity
+        words1 = set(text1.lower().split())
+        words2 = set(text2.lower().split())
+        
+        if not words1 or not words2:
+            return 0.0
+        
+        intersection = len(words1.intersection(words2))
+        union = len(words1.union(words2))
+        
+        return intersection / union if union > 0 else 0.0
+    
+    def _calculate_list_overlap(self, list1: List[str], list2: List[str]) -> float:
+        """Calculate overlap between two lists."""
+        if not list1 or not list2:
+            return 0.0
+        
+        set1 = set(item.lower() for item in list1)
+        set2 = set(item.lower() for item in list2)
+        
+        intersection = len(set1.intersection(set2))
+        union = len(set1.union(set2))
+        
+        return intersection / union if union > 0 else 0.0
 
 
 # Export main classes
