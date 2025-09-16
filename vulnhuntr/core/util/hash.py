@@ -6,7 +6,7 @@ import json
 from typing import Any, Dict
 
 
-def compute_config_hash(config_dict: Dict[str, Any]) -> str:
+def compute_config_hash(config: Any) -> str:
     """
     Compute a stable SHA256 hash of the configuration.
     
@@ -14,11 +14,17 @@ def compute_config_hash(config_dict: Dict[str, Any]) -> str:
     excluding runtime ephemeral fields and ensuring deterministic ordering.
     
     Args:
-        config_dict: Configuration dictionary
+        config: Configuration dictionary or RunConfig object
         
     Returns:
         SHA256 hash as hexadecimal string
     """
+    # Convert to dict if it's a RunConfig object
+    if hasattr(config, 'to_dict'):
+        config_dict = config.to_dict()
+    else:
+        config_dict = config
+    
     # Create a normalized copy excluding ephemeral fields
     normalized = normalize_config_for_hash(config_dict)
     
@@ -54,7 +60,7 @@ def normalize_config_for_hash(config: Dict[str, Any]) -> Dict[str, Any]:
                     cleaned_value = clean_dict(value)
                     if cleaned_value is not None:  # Exclude None values
                         result[key] = cleaned_value
-            return result if result else None
+            return result  # Return empty dict as-is, don't convert to None
         elif isinstance(obj, list):
             cleaned_list = [clean_dict(item) for item in obj if clean_dict(item) is not None]
             return cleaned_list if cleaned_list else None

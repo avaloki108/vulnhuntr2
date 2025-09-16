@@ -277,7 +277,7 @@ def scan(
         # Still create reporting engine to handle gating (might fail on zero findings if configured)
         reporting_engine = ReportingEngine(config)
         exit_code, gating_reasons, report = reporting_engine.package_results(
-            raw_findings, [], enabled_detectors, config_warnings + detector_warnings
+            raw_findings, raw_findings, [], enabled_detectors, config_warnings + detector_warnings
         )
         
         if exit_code != 0:
@@ -327,10 +327,10 @@ def scan(
                 poc_code = poc_generator.generate_poc(finding, context, config.analysis.poc_output_dir)
                 finding.poc_code = poc_code
     
-    # Create reporting engine and package results
+    # Create reporting engine and evaluate gating against raw findings (before filtering)
     reporting_engine = ReportingEngine(config)
     exit_code, gating_reasons, report = reporting_engine.package_results(
-        filtered_findings, correlated_findings, enabled_detectors, config_warnings + detector_warnings
+        raw_findings, filtered_findings, correlated_findings, enabled_detectors, config_warnings + detector_warnings
     )
     
     # Display Results

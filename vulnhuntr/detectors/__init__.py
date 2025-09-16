@@ -62,7 +62,7 @@ def load_detectors(config: RunConfig) -> Tuple[List[Any], List[str], Dict[str, A
     
     # Process enabled selectors (additive)
     for selector in config.detectors.enabled:
-        matched_detectors = _match_detectors(all_detectors, selector)
+        matched_detectors = match_detectors(all_detectors, selector)
         if not matched_detectors:
             warnings.append(f"Enabled selector '{selector}' matches no detectors")
         else:
@@ -72,7 +72,7 @@ def load_detectors(config: RunConfig) -> Tuple[List[Any], List[str], Dict[str, A
     
     # Process disabled selectors (subtractive, higher precedence)
     for selector in config.detectors.disabled:
-        matched_detectors = _match_detectors(all_detectors, selector)
+        matched_detectors = match_detectors(all_detectors, selector)
         if not matched_detectors:
             warnings.append(f"Disabled selector '{selector}' matches no detectors")
         else:
@@ -88,7 +88,17 @@ def load_detectors(config: RunConfig) -> Tuple[List[Any], List[str], Dict[str, A
     for detector in all_detectors:
         if detector.name in final_enabled:
             detector_confidence = getattr(detector, 'confidence', 0.5)
-            if config.detectors.min_confidence <= detector_confidence <= config.detectors.max_confidence:
+            # Validate that confidence is a float in [0.0, 1.0]
+            try:
+                detector_confidence_val = float(detector_confidence)
+                if not (0.0 <= detector_confidence_val <= 1.0):
+                    raise ValueError
+            except (TypeError, ValueError):
+                warnings.append(
+                    f"Detector '{detector.name}' has invalid confidence value '{detector_confidence}', using default 0.5"
+                )
+                detector_confidence_val = 0.5
+            if config.detectors.min_confidence <= detector_confidence_val <= config.detectors.max_confidence:
                 enabled_detectors.append(detector)
             else:
                 warnings.append(f"Detector '{detector.name}' excluded due to confidence filter")
@@ -112,7 +122,7 @@ def load_detectors(config: RunConfig) -> Tuple[List[Any], List[str], Dict[str, A
     return enabled_detectors, warnings, explanation_map
 
 
-def _match_detectors(all_detectors: List[Any], selector: str) -> List[Any]:
+def match_detectors(all_detectors: List[Any], selector: str) -> List[Any]:
     """
     Match detectors against a selector.
     
@@ -138,7 +148,7 @@ def explain_selector(selector: str) -> Dict[str, Any]:
         Dictionary with match details
     """
     all_detectors = get_registered_detectors()
-    matched_detectors = _match_detectors(all_detectors, selector)
+    matched_detectors = match_detectors(all_detectors, selector)
     
     explanation = {
         "selector": selector,

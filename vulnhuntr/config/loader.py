@@ -269,7 +269,7 @@ class ConfigLoader:
     def compute_config_hash(self, config: RunConfig) -> str:
         """Compute stable hash of configuration."""
         from ..core.util.hash import compute_config_hash as hash_util
-        return hash_util(config.to_dict())
+        return hash_util(config)
 
 
 # Convenience functions

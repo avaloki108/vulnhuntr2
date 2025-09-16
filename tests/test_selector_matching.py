@@ -1,7 +1,7 @@
 """
 Tests for detector selector matching logic.
 """
-from vulnhuntr.detectors import explain_selector, _match_detectors
+from vulnhuntr.detectors import explain_selector, match_detectors
 from vulnhuntr.core.registry import get_registered_detectors
 
 
@@ -10,12 +10,12 @@ def test_exact_selector_matching():
     all_detectors = get_registered_detectors()
     
     # Test exact match
-    matches = _match_detectors(all_detectors, "reentrancy_heuristic")
+    matches = match_detectors(all_detectors, "reentrancy_heuristic")
     assert len(matches) == 1
     assert matches[0].name == "reentrancy_heuristic"
     
     # Test non-existent detector
-    matches = _match_detectors(all_detectors, "non_existent_detector")
+    matches = match_detectors(all_detectors, "non_existent_detector")
     assert len(matches) == 0
 
 
@@ -24,17 +24,17 @@ def test_glob_selector_matching():
     all_detectors = get_registered_detectors()
     
     # Test wildcard at end
-    matches = _match_detectors(all_detectors, "*_heuristic")
+    matches = match_detectors(all_detectors, "*_heuristic")
     detector_names = [d.name for d in matches]
     assert "reentrancy_heuristic" in detector_names
     
     # Test wildcard at start
-    matches = _match_detectors(all_detectors, "reentrancy_*")
+    matches = match_detectors(all_detectors, "reentrancy_*")
     detector_names = [d.name for d in matches]
     assert "reentrancy_heuristic" in detector_names
     
     # Test wildcard in middle
-    matches = _match_detectors(all_detectors, "*_chain_*")
+    matches = match_detectors(all_detectors, "*_chain_*")
     detector_names = [d.name for d in matches]
     assert "cross_chain_relay_replay" in detector_names
 
@@ -44,17 +44,17 @@ def test_category_selector_matching():
     all_detectors = get_registered_detectors()
     
     # Test specific category
-    matches = _match_detectors(all_detectors, "category:reentrancy")
+    matches = match_detectors(all_detectors, "category:reentrancy")
     assert len(matches) >= 1
     for detector in matches:
         assert detector.category == "reentrancy"
     
     # Test category wildcard
-    matches = _match_detectors(all_detectors, "category:*")
+    matches = match_detectors(all_detectors, "category:*")
     assert len(matches) == len(all_detectors)  # Should match all detectors
     
     # Test category pattern
-    matches = _match_detectors(all_detectors, "category:cross_*")
+    matches = match_detectors(all_detectors, "category:cross_*")
     detector_names = [d.name for d in matches]
     assert "cross_chain_relay_replay" in detector_names
 
@@ -100,15 +100,15 @@ def test_empty_selector_matching():
     all_detectors = get_registered_detectors()
     
     # Test non-existent exact match
-    matches = _match_detectors(all_detectors, "nonexistent_detector")
+    matches = match_detectors(all_detectors, "nonexistent_detector")
     assert len(matches) == 0
     
     # Test non-existent category
-    matches = _match_detectors(all_detectors, "category:nonexistent")
+    matches = match_detectors(all_detectors, "category:nonexistent")
     assert len(matches) == 0
     
     # Test non-matching glob
-    matches = _match_detectors(all_detectors, "xyz*abc")
+    matches = match_detectors(all_detectors, "xyz*abc")
     assert len(matches) == 0
 
 
@@ -117,9 +117,9 @@ def test_selector_case_sensitivity():
     all_detectors = get_registered_detectors()
     
     # Test exact match with wrong case (should not match)
-    matches = _match_detectors(all_detectors, "REENTRANCY_HEURISTIC")
+    matches = match_detectors(all_detectors, "REENTRANCY_HEURISTIC")
     assert len(matches) == 0
     
     # Test category with wrong case (should not match)
-    matches = _match_detectors(all_detectors, "category:REENTRANCY")
+    matches = match_detectors(all_detectors, "category:REENTRANCY")
     assert len(matches) == 0

@@ -23,7 +23,8 @@ class ReportingEngine:
     
     def package_results(
         self,
-        findings: List[Finding],
+        gating_findings: List[Finding],
+        display_findings: List[Finding],
         correlated_findings: List[CorrelatedFinding],
         enabled_detectors: List[Any],
         warnings: List[str]
@@ -31,13 +32,20 @@ class ReportingEngine:
         """
         Package results and evaluate gating conditions.
         
+        Args:
+            gating_findings: Raw findings used for CI gating evaluation
+            display_findings: Filtered findings used for display and output
+            correlated_findings: Correlated findings from analysis
+            enabled_detectors: List of enabled detectors
+            warnings: Configuration and processing warnings
+        
         Returns:
             Tuple of (exit_code, gating_reasons, report_object)
         """
         run_finished = datetime.now(timezone.utc)
         
-        # Evaluate gating conditions
-        exit_code, gating_reasons = self._evaluate_gating(findings)
+        # Evaluate gating conditions against raw findings
+        exit_code, gating_reasons = self._evaluate_gating(gating_findings)
         
         # Build metadata block
         metadata = {
@@ -45,7 +53,8 @@ class ReportingEngine:
             "config_hash": compute_config_hash(self.config),
             "run_started": self.run_started.isoformat(),
             "run_finished": run_finished.isoformat(),
-            "total_findings": len(findings),
+            "total_findings": len(display_findings),  # Use display findings for report count
+            "total_raw_findings": len(gating_findings),  # Include raw count for transparency
             "detectors_enabled": len(enabled_detectors),
             "detector_names": [getattr(d, 'name', str(d)) for d in enabled_detectors],
             "gating": {
@@ -55,10 +64,10 @@ class ReportingEngine:
             "warnings": warnings
         }
         
-        # Build report object
+        # Build report object with display findings
         report = {
             "meta": metadata,
-            "findings": [finding.to_dict() for finding in findings],
+            "findings": [finding.to_dict() for finding in display_findings],
             "correlated_findings": [cf.to_dict() for cf in correlated_findings] if correlated_findings else []
         }
         

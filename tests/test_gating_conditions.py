@@ -30,13 +30,13 @@ def test_gating_fail_on_findings():
     engine = ReportingEngine(config)
     
     # Test with no findings - should pass
-    exit_code, reasons, report = engine.package_results([], [], [], [])
+    exit_code, reasons, report = engine.package_results([], [], [], [], [])
     assert exit_code == 0
     assert len(reasons) == 0
     
     # Test with findings - should fail
     findings = [create_sample_finding(Severity.LOW)]
-    exit_code, reasons, report = engine.package_results(findings, [], [], [])
+    exit_code, reasons, report = engine.package_results(findings, findings, [], [], [])
     assert exit_code == 1
     assert len(reasons) == 1
     assert "1 findings (fail_on_findings=true)" in reasons[0]
@@ -54,13 +54,13 @@ def test_gating_severity_threshold():
         create_sample_finding(Severity.LOW),
         create_sample_finding(Severity.MEDIUM)
     ]
-    exit_code, reasons, report = engine.package_results(findings, [], [], [])
+    exit_code, reasons, report = engine.package_results(findings, findings, [], [], [])
     assert exit_code == 0
     assert len(reasons) == 0
     
     # Test with high severity finding - should fail
     findings.append(create_sample_finding(Severity.HIGH))
-    exit_code, reasons, report = engine.package_results(findings, [], [], [])
+    exit_code, reasons, report = engine.package_results(findings, findings, [], [], [])
     assert exit_code == 1
     assert len(reasons) == 1
     assert "HIGH" in reasons[0] and "fail_on_severity=HIGH" in reasons[0]
@@ -78,13 +78,13 @@ def test_gating_confidence_threshold():
         create_sample_finding(Severity.HIGH, confidence=0.5),
         create_sample_finding(Severity.CRITICAL, confidence=0.7)
     ]
-    exit_code, reasons, report = engine.package_results(findings, [], [], [])
+    exit_code, reasons, report = engine.package_results(findings, findings, [], [], [])
     assert exit_code == 0
     assert len(reasons) == 0
     
     # Test with high confidence finding - should fail
     findings.append(create_sample_finding(Severity.MEDIUM, confidence=0.9))
-    exit_code, reasons, report = engine.package_results(findings, [], [], [])
+    exit_code, reasons, report = engine.package_results(findings, findings, [], [], [])
     assert exit_code == 1
     assert len(reasons) == 1
     assert "0.8 confidence" in reasons[0]
@@ -102,13 +102,13 @@ def test_gating_finding_count_threshold():
         create_sample_finding(Severity.LOW),
         create_sample_finding(Severity.MEDIUM)
     ]
-    exit_code, reasons, report = engine.package_results(findings, [], [], [])
+    exit_code, reasons, report = engine.package_results(findings, findings, [], [], [])
     assert exit_code == 0
     assert len(reasons) == 0
     
     # Test with threshold count - should fail
     findings.append(create_sample_finding(Severity.LOW))
-    exit_code, reasons, report = engine.package_results(findings, [], [], [])
+    exit_code, reasons, report = engine.package_results(findings, findings, [], [], [])
     assert exit_code == 1
     assert len(reasons) == 1
     assert "3 findings >= 3" in reasons[0]
@@ -129,7 +129,7 @@ def test_gating_multiple_conditions():
         create_sample_finding(Severity.MEDIUM, confidence=0.7)  # Triggers count + others
     ]
     
-    exit_code, reasons, report = engine.package_results(findings, [], [], [])
+    exit_code, reasons, report = engine.package_results(findings, findings, [], [], [])
     assert exit_code == 1
     assert len(reasons) == 3  # All three conditions triggered
     
@@ -149,7 +149,7 @@ def test_report_metadata_structure():
     enabled_detectors = ["test_detector"]
     warnings = ["test warning"]
     
-    exit_code, reasons, report = engine.package_results(findings, [], enabled_detectors, warnings)
+    exit_code, reasons, report = engine.package_results(findings, findings, [], enabled_detectors, warnings)
     
     assert "meta" in report
     meta = report["meta"]
@@ -206,7 +206,7 @@ def test_invalid_gating_configuration():
     engine = ReportingEngine(config)
     findings = [create_sample_finding(Severity.HIGH)]
     
-    exit_code, reasons, report = engine.package_results(findings, [], [], [])
+    exit_code, reasons, report = engine.package_results(findings, findings, [], [], [])
     
     # Should still fail but with an error reason
     assert exit_code == 1
