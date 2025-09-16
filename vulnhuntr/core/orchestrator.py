@@ -11,8 +11,8 @@ from .models import Finding, ScanContext, ContractInfo, Severity
 class Orchestrator:
     """Enhanced orchestrator for running vulnerability detection with new architecture."""
 
-    def __init__(self) -> None:
-        self.detectors = get_registered_detectors()
+    def __init__(self, detectors: List[Any] = None) -> None:
+        self.detectors = detectors if detectors is not None else get_registered_detectors()
 
     def collect_sources(self, target: Path) -> List[Path]:
         if target.is_file():

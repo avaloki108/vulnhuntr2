@@ -1,0 +1,69 @@
+# vulnhuntr2 Configuration Example
+# This file demonstrates all available configuration options
+
+[detectors]
+# Detector selection - selectors are processed in order
+enabled = [
+    "cross_chain_*",           # Enable all cross-chain detectors (glob pattern)
+    "category:access_control", # Enable all access control detectors (category selector)
+    "reentrancy_heuristic"     # Enable specific detector (exact match)
+]
+disabled = [
+    "*_experimental",          # Disable experimental detectors (glob pattern)
+    "category:deprecated"      # Disable deprecated category (category selector)
+]
+categories = ["cross_chain", "reentrancy", "oracle"]  # Only include these categories
+min_confidence = 0.5                                   # Minimum confidence threshold (0.0-1.0)
+max_confidence = 1.0                                   # Maximum confidence threshold (0.0-1.0)
+
+[llm]
+enabled = false                    # Enable LLM synthesis
+provider = "openai"               # LLM provider (openai)
+model = "gpt-4"                   # Model to use
+# api_key = "sk-..."              # API key (better to use VULNHUNTR_LLM_API_KEY env var)
+temperature = 0.7                 # Temperature for generation (0.0-2.0)
+max_tokens = 2048                 # Maximum tokens for responses
+timeout = 30                      # Request timeout in seconds
+
+[analysis]
+enable_correlation = true         # Enable finding correlation
+enable_poc_generation = false     # Enable PoC generation
+# poc_output_dir = "./pocs"       # Directory for PoC files
+use_slither = false               # Enable Slither static analysis
+# slither_json_file = "./slither.json"  # Save Slither output
+
+[output]
+format = "table"                  # Output format: table, json, sarif
+# json_file = "./findings.json"   # Save findings as JSON
+# correlated_json_file = "./correlated.json"  # Save correlated findings
+min_severity = "INFO"             # Minimum severity to display
+show_code = true                  # Include code snippets in output
+show_references = true            # Include references in output
+
+[reporting]
+# CI/CD Integration and Gating
+fail_on_findings = false          # Exit non-zero if any findings
+# fail_on_severity = "HIGH"       # Exit non-zero if any findings >= severity
+# fail_on_confidence = 0.8        # Exit non-zero if any findings >= confidence
+# fail_on_finding_count = 10      # Exit non-zero if total findings >= count
+
+# Future reporting options
+sarif = false                     # Generate SARIF output
+markdown_summary = false          # Generate markdown summary
+
+# Example environment variable overrides:
+# VULNHUNTR_LLM_ENABLED=true
+# VULNHUNTR_LLM_API_KEY=sk-...
+# VULNHUNTR_FAIL_ON_SEVERITY=HIGH
+# VULNHUNTR_OUTPUT_JSON_FILE=./results.json
+# VULNHUNTR_DETECTORS_ENABLED="cross_chain_*,category:oracle"
+# VULNHUNTR_DETECTORS_DISABLED="*_experimental"
+
+# Example CLI usage:
+# vulnhuntr scan ./contracts --config vulnhuntr.toml
+# vulnhuntr scan ./contracts --enable "category:cross_chain" --disable "*_experimental"
+# vulnhuntr scan ./contracts --fail-on-severity HIGH --json results.json
+# vulnhuntr list-detectors --json
+# vulnhuntr --explain-selector "category:*"
+# vulnhuntr --config-dump
+# vulnhuntr --print-config-hash

@@ -31,6 +31,13 @@ class EventlessCriticalActionDetector(HeuristicDetector):
     cwe_id = "CWE-778"  # Insufficient Logging
     confidence = 0.7
     
+    # Enhanced metadata for Phase 3
+    stability = "stable"
+    maturity = "beta"
+    requires_slither = False
+    supports_llm_enrichment = True
+    enabled_by_default = True
+    
     def __init__(self):
         super().__init__()
         self.tags.add("events")

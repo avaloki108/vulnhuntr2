@@ -28,4 +28,26 @@ contract T { function f() public { (bool ok, ) = address(this).call(""); } }"""
     assert result.returncode == 0
     assert findings_path.exists()
     data = json.loads(findings_path.read_text())
-    assert isinstance(data, list)
+    
+    # Check new structured format
+    assert isinstance(data, dict)
+    assert "meta" in data
+    assert "findings" in data
+    assert "correlated_findings" in data
+    
+    # Check metadata structure
+    meta = data["meta"]
+    assert "version" in meta
+    assert "config_hash" in meta
+    assert "total_findings" in meta
+    assert "detectors_enabled" in meta
+    assert "gating" in meta
+    
+    # Check findings are in the expected format
+    findings = data["findings"]
+    assert isinstance(findings, list)
+    if findings:  # If any findings exist
+        finding = findings[0]
+        assert "detector" in finding
+        assert "severity" in finding
+        assert "file" in finding

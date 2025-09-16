@@ -1,13 +1,18 @@
+"""
+Simple reentrancy heuristic detector.
+"""
 from __future__ import annotations
 
 import re
-from typing import Iterable
+from typing import Iterator
 
-from ..core.registry import register, Finding
+from ..core.models import Finding, ScanContext, Severity
+from ..core.registry import register
+from .base import HeuristicDetector
 
 
 @register
-class ReentrancyHeuristic:
+class ReentrancyHeuristic(HeuristicDetector):
     """
     Extremely naive heuristic detector for potential reentrancy risk patterns.
     This is a placeholder example: real detectors should use proper AST parsing.
@@ -15,38 +20,64 @@ class ReentrancyHeuristic:
 
     name = "reentrancy_heuristic"
     description = "Flags occurrences of low-level external calls before state updates."
-    severity = "MEDIUM"
+    severity = Severity.MEDIUM
+    category = "reentrancy"
+    cwe_id = "CWE-841"  # Improper Enforcement of Behavioral Workflow
+    confidence = 0.6
+    
+    # Enhanced metadata
+    stability = "experimental"
+    maturity = "alpha"
+    requires_slither = False
+    supports_llm_enrichment = True
+    enabled_by_default = True
 
-    # Simple regex indicators of an external call
-    CALL_PATTERNS = [
-        re.compile(r"\.call\.value\(", re.IGNORECASE),
-        re.compile(r"\bcall\(", re.IGNORECASE),
-        re.compile(r"\bdelegatecall\(", re.IGNORECASE),
-        re.compile(r"\bcallcode\(", re.IGNORECASE),
-        re.compile(r"\.send\(", re.IGNORECASE),
-        re.compile(r"\.transfer\(", re.IGNORECASE),
-    ]
-
-    def analyze(self, path: str, content: str) -> Iterable[Finding]:
-        lines = content.splitlines()
-        for idx, line in enumerate(lines, start=1):
-            stripped = line.strip()
-            # Skip comments
-            if stripped.startswith("//") or stripped.startswith("/*"):
-                continue
-
-            for pat in self.CALL_PATTERNS:
-                if pat.search(stripped):
-                    yield Finding(
-                        detector=self.name,
-                        title="Potential reentrancy-sensitive external call",
-                        file=path,
-                        line=idx,
-                        severity=self.severity,
-                        code=stripped[:300],
-                        description=(
-                            "External call detected. Ensure state changes occur "
-                            "before external interactions and employ reentrancy guards."
-                        ),
-                    )
-                    break
+    def __init__(self):
+        super().__init__()
+        self.tags.add("reentrancy")
+        self.tags.add("external_call")
+        self.references = [
+            "https://consensys.github.io/smart-contract-best-practices/attacks/reentrancy/",
+            "https://blog.openzeppelin.com/reentrancy-after-istanbul/"
+        ]
+        
+        self._setup_patterns()
+    
+    def _setup_patterns(self):
+        """Setup detection patterns for reentrancy vulnerabilities."""
+        
+        # Pattern 1: External calls
+        self.add_pattern(
+            regex=r"\.call\s*\(",
+            title="Potential reentrancy-sensitive external call",
+            description=(
+                "External call detected. Ensure state changes occur "
+                "before external interactions and employ reentrancy guards."
+            ),
+            confidence=0.6,
+            severity=Severity.MEDIUM
+        )
+        
+        # Pattern 2: Send/transfer calls
+        self.add_pattern(
+            regex=r"\.(send|transfer)\s*\(",
+            title="Ether transfer call detected",
+            description=(
+                "Ether transfer detected. Consider using withdrawal pattern "
+                "or reentrancy guards to prevent attacks."
+            ),
+            confidence=0.5,
+            severity=Severity.LOW
+        )
+        
+        # Pattern 3: Delegatecall
+        self.add_pattern(
+            regex=r"\.delegatecall\s*\(",
+            title="Delegatecall detected",
+            description=(
+                "Delegatecall can be dangerous and may allow reentrancy. "
+                "Ensure proper access controls and state protection."
+            ),
+            confidence=0.8,
+            severity=Severity.HIGH
+        )
