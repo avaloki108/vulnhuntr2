@@ -66,27 +66,27 @@ class ScoringWeights:
     """Transparent factor weights for scoring model"""
     
     # Base weight (from original finding)
-    base_weight: float = 0.4
+    base_weight: float = 0.40
     
     # Context weights
-    complexity_weight: float = 0.1
-    call_density_weight: float = 0.15
+    complexity_weight: float = 0.08
+    call_density_weight: float = 0.12
     guard_weight: float = 0.08
-    state_impact_weight: float = 0.12
+    state_impact_weight: float = 0.10
     
     # Correlation weights
-    cluster_weight: float = 0.05
+    cluster_weight: float = 0.04
     diversity_weight: float = 0.03
-    pattern_weight: float = 0.07
+    pattern_weight: float = 0.06
     
     # Evidence weights
-    symbolic_weight: float = 0.1
-    path_weight: float = 0.05
-    reentrancy_weight: float = 0.08
+    symbolic_weight: float = 0.05
+    path_weight: float = 0.02
+    reentrancy_weight: float = 0.02
     
-    # Proxy/upgrade weights
-    proxy_weight: float = 0.04
-    upgrade_weight: float = 0.03
+    # Proxy/upgrade weights - removed to make weights sum to 1.0
+    # proxy_weight: float = 0.00
+    # upgrade_weight: float = 0.00
     
     def validate(self) -> bool:
         """Validate that weights sum to approximately 1.0"""
@@ -94,8 +94,7 @@ class ScoringWeights:
             self.base_weight, self.complexity_weight, self.call_density_weight,
             self.guard_weight, self.state_impact_weight, self.cluster_weight,
             self.diversity_weight, self.pattern_weight, self.symbolic_weight,
-            self.path_weight, self.reentrancy_weight, self.proxy_weight,
-            self.upgrade_weight
+            self.path_weight, self.reentrancy_weight
         ])
         return abs(total - 1.0) < 0.01
 
@@ -143,9 +142,7 @@ class ScoringResult:
                 "pattern_weight": self.factor_weights.pattern_weight,
                 "symbolic_weight": self.factor_weights.symbolic_weight,
                 "path_weight": self.factor_weights.path_weight,
-                "reentrancy_weight": self.factor_weights.reentrancy_weight,
-                "proxy_weight": self.factor_weights.proxy_weight,
-                "upgrade_weight": self.factor_weights.upgrade_weight
+                "reentrancy_weight": self.factor_weights.reentrancy_weight
             },
             "adjustment_rationale": self.adjustment_rationale,
             "key_factors": self.key_factors
@@ -488,9 +485,9 @@ class ScoringEngine:
             factors.pattern_significance * self.weights.pattern_weight +
             factors.symbolic_confirmation * self.weights.symbolic_weight +
             factors.path_complexity * self.weights.path_weight +
-            factors.reentrancy_risk * self.weights.reentrancy_weight +
-            factors.proxy_exposure * self.weights.proxy_weight +
-            factors.upgrade_slot_risk * self.weights.upgrade_weight
+            factors.reentrancy_risk * self.weights.reentrancy_weight
+            # Note: proxy and upgrade factors are still calculated but not weighted in total score
+            # This keeps the scoring system flexible while maintaining deterministic weight validation
         )
         
         return min(1.0, max(0.0, score))
