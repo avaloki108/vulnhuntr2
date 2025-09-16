@@ -20,6 +20,7 @@ from .core.version import VERSION
 from .config.loader import load_config, dump_config, write_config, compute_config_hash
 from .config.schema import RunConfig
 from .detectors import load_detectors, explain_selector as explain_detector_selector
+from .core.reporting import ReportingEngine
 
 app = typer.Typer(help="Advanced smart contract vulnerability hunting with heuristic and LLM synthesis")
 console = Console()
@@ -892,6 +893,433 @@ def _get_severity_color(severity) -> str:
         'LOW': 'blue',
         'INFO': 'white'
     }.get(sev_val, 'white')
+
+
+@app.command()
+def invariants(
+    action: str = typer.Argument(..., help="Action: generate, test, list"),
+    config_file: Optional[Path] = typer.Option(None, "--config", help="Configuration file path"),
+    invariants_file: Optional[Path] = typer.Option(None, "--file", help="Invariants file path"),
+    output: Optional[Path] = typer.Option(None, "--output", help="Output file for generated invariants"),
+):
+    """Manage invariants: generate, test, or list invariants."""
+    config, warnings = load_config(config_file)
+    
+    # Print warnings
+    for warning in warnings:
+        console.print(f"[yellow]Warning: {warning}[/yellow]")
+    
+    if action == "generate":
+        console.print("[bold blue]🔧 Generating sample invariants file[/bold blue]")
+        
+        from .core.invariants import InvariantEngine
+        engine = InvariantEngine(config.invariants.__dict__ if hasattr(config, 'invariants') else {})
+        
+        output_file = invariants_file or Path("invariants.yml")
+        engine.create_sample_invariants_file(output_file)
+        
+        console.print(f"[bold green]✅ Sample invariants generated: {output_file}[/bold green]")
+    
+    elif action == "test":
+        console.print("[bold blue]🧪 Testing invariants[/bold blue]")
+        
+        from .core.invariants import InvariantEngine
+        engine = InvariantEngine(config.invariants.__dict__ if hasattr(config, 'invariants') else {})
+        
+        invariants_file = invariants_file or Path("invariants.yml")
+        if not invariants_file.exists():
+            console.print(f"[red]Invariants file not found: {invariants_file}[/red]")
+            raise typer.Exit(1)
+        
+        # Load invariants
+        invariants = engine.load_invariants(invariants_file)
+        console.print(f"[green]Loaded {len(invariants)} invariants[/green]")
+        
+        # Validate invariants (mock context)
+        context = {"contracts": []}
+        results = engine.validate_invariants(invariants, context)
+        
+        # Display results
+        table = Table(title="Invariant Test Results", box=box.ROUNDED)
+        table.add_column("Name", style="cyan")
+        table.add_column("Status", style="white")
+        table.add_column("Method", style="green")
+        table.add_column("Confidence", style="blue")
+        
+        for result in results:
+            status_color = {
+                "proven": "green",
+                "violated": "red", 
+                "inconclusive": "yellow"
+            }.get(result.status.value, "white")
+            
+            table.add_row(
+                result.invariant_name,
+                f"[{status_color}]{result.status.value.upper()}[/{status_color}]",
+                result.method,
+                f"{result.confidence:.1%}"
+            )
+        
+        console.print(table)
+        
+        # Show summary stats
+        stats = engine.get_invariant_stats(invariants, results)
+        console.print(f"\n[bold cyan]📊 Summary:[/bold cyan]")
+        console.print(f"  Declared: {stats['declared']}")
+        console.print(f"  Suggested: {stats['suggested']}")
+        console.print(f"  Proven: {stats['proven']}")
+        console.print(f"  Violated: {stats['violated']}")
+        console.print(f"  Inconclusive: {stats['inconclusive']}")
+    
+    elif action == "list":
+        console.print("[bold blue]📋 Listing available invariants[/bold blue]")
+        
+        invariants_file = invariants_file or Path("invariants.yml")
+        if not invariants_file.exists():
+            console.print(f"[yellow]No invariants file found: {invariants_file}[/yellow]")
+            console.print("Use 'vulnhuntr invariants generate' to create a sample file")
+            return
+        
+        from .core.invariants import InvariantEngine
+        engine = InvariantEngine(config.invariants.__dict__ if hasattr(config, 'invariants') else {})
+        invariants = engine.load_invariants(invariants_file)
+        
+        table = Table(title="Available Invariants", box=box.ROUNDED)
+        table.add_column("Name", style="cyan")
+        table.add_column("Scope", style="white")
+        table.add_column("Category", style="green")
+        table.add_column("Auto", style="yellow")
+        
+        for inv in invariants:
+            table.add_row(
+                inv.name,
+                inv.scope,
+                inv.category.value,
+                "✓" if inv.auto_suggested else "✗"
+            )
+        
+        console.print(table)
+        console.print(f"[bold green]Total: {len(invariants)} invariants[/bold green]")
+    
+    else:
+        console.print(f"[red]Unknown action: {action}[/red]")
+        console.print("Available actions: generate, test, list")
+        raise typer.Exit(1)
+
+
+@app.command()
+def simulate(
+    target: Path = typer.Argument(..., exists=True, readable=True, help="File or directory to analyze"),
+    config_file: Optional[Path] = typer.Option(None, "--config", help="Configuration file path"),
+    scenario: Optional[str] = typer.Option(None, "--scenario", help="Specific scenario ID to simulate"),
+    max_scenarios: int = typer.Option(5, "--max-scenarios", help="Maximum scenarios to simulate"),
+    output: Optional[Path] = typer.Option(None, "--output", help="Save simulation results to file"),
+):
+    """Run economic exploit scenario simulations."""
+    config, warnings = load_config(config_file)
+    
+    # Print warnings
+    for warning in warnings:
+        console.print(f"[yellow]Warning: {warning}[/yellow]")
+    
+    console.print(f"[bold blue]💰 Running exploit scenario simulations on {target}[/bold blue]")
+    
+    # Load enabled detectors and run basic scan first
+    enabled_detectors, detector_warnings, _ = load_detectors(config)
+    
+    # Print detector warnings
+    for warning in detector_warnings:
+        console.print(f"[yellow]Warning: {warning}[/yellow]")
+    
+    context = ScanContext(target_path=target)
+    orch = Orchestrator(enabled_detectors)
+    findings = orch.run_enhanced(context)
+    
+    if not findings:
+        console.print("[bold yellow]No findings to simulate scenarios for[/bold yellow]")
+        return
+    
+    console.print(f"[green]Found {len(findings)} findings for simulation[/green]")
+    
+    # Run economic simulations
+    from .core.exploit_simulation import ExploitScenarioSimulator, MarketConditions
+    
+    # Create market conditions (could be configurable)
+    market_conditions = MarketConditions(
+        volatility=0.15,
+        liquidity_depth=5000000.0,  # $5M
+        gas_price_gwei=30.0,
+        mev_competition=0.6
+    )
+    
+    simulator = ExploitScenarioSimulator(market_conditions)
+    
+    if scenario:
+        # Simulate specific scenario (simplified - would need to look up by ID)
+        console.print(f"[yellow]Specific scenario simulation not implemented yet[/yellow]")
+        return
+    else:
+        # Simulate top scenarios
+        scenarios = simulator.simulate_top_scenarios(findings, max_scenarios)
+    
+    # Display results
+    table = Table(title="Exploit Scenario Simulations", box=box.ROUNDED)
+    table.add_column("Scenario", style="cyan")
+    table.add_column("Type", style="white")
+    table.add_column("Feasibility", style="green") 
+    table.add_column("Capital ($)", style="yellow")
+    table.add_column("Payoff ($)", style="red")
+    table.add_column("ROI", style="blue")
+    
+    for scenario in scenarios:
+        feasibility_color = {
+            "plausible": "green",
+            "improbable": "red",
+            "unknown": "yellow"
+        }.get(scenario.feasibility.value, "white")
+        
+        roi = scenario.get_risk_adjusted_return()
+        roi_color = "green" if roi > 0.5 else "yellow" if roi > 0.1 else "red"
+        
+        table.add_row(
+            scenario.scenario_id[:20] + "...",
+            scenario.exploit_type.value,
+            f"[{feasibility_color}]{scenario.feasibility.value.upper()}[/{feasibility_color}]",
+            f"${scenario.capital_requirements.minimum_capital_usd:,.0f}",
+            f"${scenario.payoff_estimate.expected_value_usd:,.0f}",
+            f"[{roi_color}]{roi:.1%}[/{roi_color}]"
+        )
+    
+    console.print(table)
+    
+    # Show summary
+    plausible_count = len([s for s in scenarios if s.feasibility.value == "plausible"])
+    total_capital = sum(s.capital_requirements.minimum_capital_usd for s in scenarios)
+    total_payoff = sum(s.payoff_estimate.expected_value_usd for s in scenarios 
+                      if isinstance(s.payoff_estimate.expected_value_usd, (int, float)))
+    
+    console.print(f"\n[bold cyan]📊 Simulation Summary:[/bold cyan]")
+    console.print(f"  Scenarios Analyzed: {len(scenarios)}")
+    console.print(f"  Plausible Exploits: {plausible_count}")
+    console.print(f"  Total Capital Required: ${total_capital:,.0f}")
+    console.print(f"  Total Potential Loss: ${total_payoff:,.0f}")
+    
+    # Save results if requested
+    if output:
+        results_data = {
+            "market_conditions": market_conditions.to_dict(),
+            "scenarios": [scenario.to_dict() for scenario in scenarios],
+            "summary": {
+                "scenarios_analyzed": len(scenarios),
+                "plausible_exploits": plausible_count,
+                "total_capital_required": total_capital,
+                "total_potential_loss": total_payoff
+            }
+        }
+        
+        with open(output, 'w') as f:
+            json.dump(results_data, f, indent=2)
+        
+        console.print(f"[bold blue]💾 Simulation results saved to {output}[/bold blue]")
+
+
+@app.command()
+def kg(
+    action: str = typer.Argument(..., help="Action: stats, query"),
+    target: Optional[Path] = typer.Option(None, "--target", help="Target file/directory for knowledge graph"),
+    query: Optional[str] = typer.Option(None, "--query", help="Query string for graph"),
+    config_file: Optional[Path] = typer.Option(None, "--config", help="Configuration file path"),
+    output: Optional[Path] = typer.Option(None, "--output", help="Output file for results"),
+):
+    """Knowledge graph operations: stats or query."""
+    config, warnings = load_config(config_file)
+    
+    # Print warnings
+    for warning in warnings:
+        console.print(f"[yellow]Warning: {warning}[/yellow]")
+    
+    if action == "stats":
+        console.print("[bold blue]📊 Knowledge Graph Statistics[/bold blue]")
+        
+        if not target:
+            console.print("[red]Target required for stats generation[/red]")
+            console.print("Use: vulnhuntr kg stats --target ./contracts")
+            raise typer.Exit(1)
+        
+        # Build knowledge graph
+        from .core.knowledge_graph import KnowledgeGraphBuilder
+        from .parsing.slither_adapter import run_slither
+        
+        builder = KnowledgeGraphBuilder()
+        contracts = []
+        
+        # Try to get contract information from Slither if available
+        try:
+            slither_result = run_slither(target)
+            if slither_result:
+                contracts = slither_result.contracts
+        except Exception as e:
+            console.print(f"[yellow]Slither not available, using basic analysis: {e}[/yellow]")
+        
+        # Build graph
+        graph = builder.build_from_contracts(contracts)
+        stats = graph.get_stats()
+        
+        # Display stats
+        console.print(f"[bold green]Graph built in {stats['build_time_ms']}ms[/bold green]")
+        console.print(f"\n[bold cyan]Nodes: {stats['total_nodes']}[/bold cyan]")
+        for node_type, count in stats['node_types'].items():
+            console.print(f"  {node_type}: {count}")
+        
+        console.print(f"\n[bold cyan]Edges: {stats['total_edges']}[/bold cyan]")
+        for edge_type, count in stats['edge_types'].items():
+            if count > 0:
+                console.print(f"  {edge_type}: {count}")
+        
+        # Save stats if requested
+        if output:
+            with open(output, 'w') as f:
+                json.dump(stats, f, indent=2)
+            console.print(f"[bold blue]💾 Stats saved to {output}[/bold blue]")
+    
+    elif action == "query":
+        console.print("[bold blue]🔍 Querying Knowledge Graph[/bold blue]")
+        
+        if not target:
+            console.print("[red]Target required for graph query[/red]")
+            raise typer.Exit(1)
+        
+        if not query:
+            console.print("[red]Query string required[/red]")
+            console.print("Examples:")
+            console.print("  'contract:Vault writes token:*'")
+            console.print("  'contract:* delegatecalls>0'")
+            raise typer.Exit(1)
+        
+        # Build knowledge graph
+        from .core.knowledge_graph import KnowledgeGraphBuilder, KnowledgeGraphFilter
+        from .parsing.slither_adapter import run_slither
+        
+        builder = KnowledgeGraphBuilder()
+        contracts = []
+        
+        try:
+            slither_result = run_slither(target)
+            if slither_result:
+                contracts = slither_result.contracts
+        except Exception:
+            pass
+        
+        graph = builder.build_from_contracts(contracts)
+        filter_engine = KnowledgeGraphFilter(graph)
+        
+        # Execute query
+        results = filter_engine.query_pattern(query)
+        
+        console.print(f"[green]Query: {query}[/green]")
+        console.print(f"[green]Results: {len(results)}[/green]")
+        
+        if results:
+            # Display first few results
+            for i, result in enumerate(results[:5]):
+                console.print(f"\n[bold cyan]Result {i+1}:[/bold cyan]")
+                console.print(json.dumps(result, indent=2))
+            
+            if len(results) > 5:
+                console.print(f"\n[yellow]... and {len(results)-5} more results[/yellow]")
+        else:
+            console.print("[yellow]No results found[/yellow]")
+        
+        # Save results if requested
+        if output:
+            with open(output, 'w') as f:
+                json.dump(results, f, indent=2)
+            console.print(f"[bold blue]💾 Query results saved to {output}[/bold blue]")
+    
+    else:
+        console.print(f"[red]Unknown action: {action}[/red]")
+        console.print("Available actions: stats, query")
+        raise typer.Exit(1)
+
+
+@app.command()
+def attest(
+    action: str = typer.Argument(..., help="Action: plugins"),
+    target: Optional[Path] = typer.Option(None, "--target", help="Plugin file or directory to attest"),
+    force: bool = typer.Option(False, "--force", help="Force re-attestation"),
+    config_file: Optional[Path] = typer.Option(None, "--config", help="Configuration file path"),
+):
+    """Attest plugins for security verification."""
+    config, warnings = load_config(config_file)
+    
+    # Print warnings
+    for warning in warnings:
+        console.print(f"[yellow]Warning: {warning}[/yellow]")
+    
+    if action == "plugins":
+        console.print("[bold blue]🔐 Plugin Attestation[/bold blue]")
+        
+        from .core.plugin_attestation import PluginAttestationManager
+        
+        # Initialize attestation manager
+        lock_file = Path("plugins.lock")
+        if hasattr(config, 'attestation') and hasattr(config.attestation, 'lock_file'):
+            lock_file = Path(config.attestation.lock_file)
+        
+        manager = PluginAttestationManager(lock_file)
+        
+        if target:
+            # Attest specific plugin
+            if not target.exists():
+                console.print(f"[red]Plugin not found: {target}[/red]")
+                raise typer.Exit(1)
+            
+            try:
+                attestation = manager.attest_plugin(target, force=force)
+                console.print(f"[bold green]✅ Plugin attested: {attestation.name}[/bold green]")
+                console.print(f"  Version: {attestation.version}")
+                console.print(f"  Hash: {attestation.file_hash[:16]}...")
+                console.print(f"  API Version: {attestation.api_version}")
+                
+                # Save lock file
+                manager.save_lock_file()
+                console.print(f"[blue]💾 Updated lock file: {lock_file}[/blue]")
+                
+            except Exception as e:
+                console.print(f"[red]Failed to attest plugin: {e}[/red]")
+                raise typer.Exit(1)
+        else:
+            # Show attestation summary
+            summary = manager.get_attestation_summary()
+            
+            console.print(f"[bold cyan]📋 Attestation Summary[/bold cyan]")
+            console.print(f"  Lock File: {summary['lock_file_path']}")
+            console.print(f"  Total Plugins: {summary['total_plugins']}")
+            
+            if summary['plugins']:
+                table = Table(title="Attested Plugins", box=box.ROUNDED)
+                table.add_column("Name", style="cyan")
+                table.add_column("Version", style="white")
+                table.add_column("Hash", style="green")
+                table.add_column("Date", style="yellow")
+                
+                for plugin in summary['plugins']:
+                    table.add_row(
+                        plugin['name'],
+                        plugin['version'],
+                        plugin['hash_preview'],
+                        plugin['attestation_date'] or "Unknown"
+                    )
+                
+                console.print(table)
+            else:
+                console.print("[yellow]No plugins attested yet[/yellow]")
+                console.print("Use: vulnhuntr attest plugins --target ./path/to/plugin")
+    
+    else:
+        console.print(f"[red]Unknown action: {action}[/red]")
+        console.print("Available actions: plugins")
+        raise typer.Exit(1)
 
 
 def main():  # pragma: no cover - entry point convenience
