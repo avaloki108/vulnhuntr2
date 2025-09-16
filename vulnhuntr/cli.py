@@ -433,6 +433,7 @@ def scan(
     # Output options
     output_json: Optional[Path] = typer.Option(None, "--json", help="Write findings as JSON to path"),
     correlated_json: Optional[Path] = typer.Option(None, "--correlated-json", help="Write correlated findings to path"),
+    sarif_file: Optional[Path] = typer.Option(None, "--sarif-file", help="Write SARIF output to path"),
     min_severity: Optional[str] = typer.Option(None, "--min-severity", help="Minimum severity to report (CRITICAL/HIGH/MEDIUM/LOW/INFO)"),
     
     # Analysis options
@@ -449,6 +450,13 @@ def scan(
     enable_scoring: Optional[bool] = typer.Option(None, "--scoring/--no-scoring", help="Enable/disable enhanced scoring"),
     symbolic_timeout: Optional[int] = typer.Option(None, "--symbolic-timeout", help="Symbolic exploration timeout per function (seconds)"),
     path_slice_max_nodes: Optional[int] = typer.Option(None, "--path-max-nodes", help="Maximum nodes in path slices"),
+    
+    # Phase 5 options
+    enable_plugins: Optional[bool] = typer.Option(None, "--plugins/--no-plugins", help="Enable/disable plugin system"),
+    enable_triage: Optional[bool] = typer.Option(None, "--triage/--no-triage", help="Enable/disable AI triage"),
+    diff_base: Optional[str] = typer.Option(None, "--diff-base", help="Git ref for incremental scanning"),
+    enable_incremental: Optional[bool] = typer.Option(None, "--incremental/--no-incremental", help="Enable/disable incremental scanning"),
+    enable_sarif: Optional[bool] = typer.Option(None, "--sarif/--no-sarif", help="Enable/disable SARIF output"),
     
     # CI Gating options
     fail_on_findings: Optional[bool] = typer.Option(None, "--fail-on-findings/--no-fail-on-findings", help="Exit non-zero if any findings"),
@@ -496,11 +504,25 @@ def scan(
     if path_slice_max_nodes is not None:
         config.analysis.path_slicing_max_nodes = path_slice_max_nodes
     
+    # Phase 5 overrides
+    if enable_plugins is not None:
+        config.plugins.enable_plugins = enable_plugins
+    if enable_triage is not None:
+        config.triage.enable = enable_triage
+    if diff_base is not None:
+        config.analysis.diff_base = diff_base
+    if enable_incremental is not None:
+        config.analysis.enable_incremental = enable_incremental
+    if enable_sarif is not None:
+        config.reporting.sarif = enable_sarif
+    
     # Output overrides
     if output_json is not None:
         config.output.json_file = output_json
     if correlated_json is not None:
         config.output.correlated_json_file = correlated_json
+    if sarif_file is not None:
+        config.output.sarif_file = sarif_file
     if min_severity is not None:
         config.output.min_severity = min_severity
     
@@ -562,8 +584,16 @@ def scan(
             console.print(f"[yellow]⚠️  Slither analysis failed: {e}, continuing with heuristic detectors[/yellow]")
     
     # Run orchestrator with filtered detectors
-    orch = Orchestrator(enabled_detectors)
+    orch = Orchestrator(enabled_detectors, config)
     raw_findings = orch.run_enhanced(context)
+    
+    # Show Phase 5 status if any features are enabled
+    phase5_status = orch.get_phase5_status()
+    if any(phase5_status.values()):
+        console.print("[blue]📋 Phase 5 Features Status:[/blue]")
+        for feature, enabled in phase5_status.items():
+            status_icon = "✅" if enabled else "❌"
+            console.print(f"  {status_icon} {feature.replace('_', ' ').title()}")
     
     if not raw_findings:
         console.print("[bold green]✅ No findings detected.[/bold green]")
@@ -791,6 +821,16 @@ def scan(
         corr_data = [cf.to_dict() for cf in correlated_findings]
         config.output.correlated_json_file.write_text(json.dumps(corr_data, indent=2))
         console.print(f"[bold blue]💾 Correlated findings saved to {config.output.correlated_json_file}[/bold blue]")
+    
+    # Phase 5: SARIF export
+    if config.output.sarif_file or config.reporting.sarif:
+        sarif_path = config.output.sarif_file or Path("vulnhuntr-results.sarif")
+        orch.export_sarif(filtered_findings, sarif_path, {
+            "tool_name": "vulnhuntr2",
+            "start_time": report.get("metadata", {}).get("start_time"),
+            "command_line": " ".join(["vulnhuntr2", "scan", str(target)])
+        })
+        console.print(f"[bold blue]💾 SARIF results saved to {sarif_path}[/bold blue]")
     
     # Display exit summary and exit with appropriate code
     if exit_code != 0:
