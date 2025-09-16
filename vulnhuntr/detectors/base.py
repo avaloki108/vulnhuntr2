@@ -6,6 +6,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import List, Optional, Dict, Any, Iterator
 import re
+import fnmatch
 from pathlib import Path
 
 from ..core.models import Finding, ScanContext, Severity, ContractFunction, ContractInfo
@@ -24,6 +25,13 @@ class BaseDetector(ABC):
     cwe_id: Optional[str] = None
     confidence: float = 0.5
     
+    # Enhanced metadata for Phase 3
+    stability: str = "experimental"  # experimental, stable, legacy
+    maturity: str = "alpha"  # alpha, beta, stable
+    requires_slither: bool = False
+    supports_llm_enrichment: bool = False
+    enabled_by_default: bool = True
+    
     def __init__(self):
         self.tags = set()
         self.references = []
@@ -40,6 +48,56 @@ class BaseDetector(ABC):
             Finding objects for detected vulnerabilities
         """
         pass
+    
+    def matches_selector(self, selector: str) -> bool:
+        """
+        Check if this detector matches the given selector.
+        
+        Supports:
+        - Exact name match: "detector_name"
+        - Glob patterns: "detector_*", "*_reentrancy"
+        - Category patterns: "category:access_control", "category:*"
+        
+        Args:
+            selector: Selector string to match against
+            
+        Returns:
+            True if this detector matches the selector
+        """
+        # Category selector
+        if selector.startswith("category:"):
+            category_pattern = selector[9:]  # Remove "category:" prefix
+            if category_pattern == "*":
+                return True
+            return fnmatch.fnmatch(self.category, category_pattern)
+        
+        # Exact name match
+        if selector == self.name:
+            return True
+        
+        # Glob pattern match on name
+        if fnmatch.fnmatch(self.name, selector):
+            return True
+        
+        return False
+    
+    def get_metadata(self) -> Dict[str, Any]:
+        """Get detector metadata for introspection."""
+        return {
+            "name": self.name,
+            "description": self.description,
+            "category": self.category,
+            "severity": self.severity.value,
+            "confidence": self.confidence,
+            "stability": self.stability,
+            "maturity": self.maturity,
+            "requires_slither": self.requires_slither,
+            "supports_llm_enrichment": self.supports_llm_enrichment,
+            "enabled_by_default": self.enabled_by_default,
+            "cwe_id": self.cwe_id,
+            "tags": list(self.tags),
+            "references": self.references.copy(),
+        }
     
     def create_finding(
         self,
