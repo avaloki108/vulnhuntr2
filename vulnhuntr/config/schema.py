@@ -69,6 +69,38 @@ class AnalysisConfig:
     poc_output_dir: Optional[Path] = None
     use_slither: bool = False
     slither_json_file: Optional[Path] = None
+    
+    # Phase 4 enhancements
+    enable_path_slicing: bool = True
+    enable_symbolic_exploration: bool = False
+    enable_scoring: bool = True
+    enable_evidence_bundles: bool = True
+    
+    # Path slicing configuration
+    path_slicing_max_nodes: int = 80
+    path_slicing_cache_dir: Optional[Path] = None
+    
+    # Symbolic exploration configuration
+    symbolic_engine: str = "mythril"
+    symbolic_max_time_per_function: int = 60
+    symbolic_max_total_time: int = 300
+    symbolic_max_paths: int = 10
+    symbolic_max_functions: int = 5
+    symbolic_trigger_min_severity: str = "MEDIUM"
+    symbolic_trigger_min_cluster_size: int = 2
+    symbolic_trigger_min_significance: float = 0.55
+    
+    # Correlation configuration
+    correlation_patterns_file: Optional[Path] = None
+    correlation_location_proximity_lines: int = 10
+    correlation_confidence_boost_multi_source: float = 0.2
+    correlation_severity_elevation_threshold: int = 3
+    
+    # Scoring configuration
+    scoring_enable_transparent_weights: bool = True
+    scoring_export_sub_factors: bool = True
+    scoring_proxy_awareness: bool = True
+    scoring_upgrade_slot_influence: bool = True
 
 
 @dataclass

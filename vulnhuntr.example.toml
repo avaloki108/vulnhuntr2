@@ -1,5 +1,5 @@
 # vulnhuntr2 Configuration Example
-# This file demonstrates all available configuration options
+# This file demonstrates all available configuration options including Phase 4 enhancements
 
 [detectors]
 # Detector selection - selectors are processed in order
@@ -26,11 +26,44 @@ max_tokens = 2048                 # Maximum tokens for responses
 timeout = 30                      # Request timeout in seconds
 
 [analysis]
+# Core analysis features
 enable_correlation = true         # Enable finding correlation
 enable_poc_generation = false     # Enable PoC generation
 # poc_output_dir = "./pocs"       # Directory for PoC files
 use_slither = false               # Enable Slither static analysis
 # slither_json_file = "./slither.json"  # Save Slither output
+
+# Phase 4 enhancements
+enable_path_slicing = true        # Enable path slicing analysis
+enable_symbolic_exploration = false  # Enable symbolic exploration (requires Mythril)
+enable_scoring = true             # Enable enhanced scoring model
+enable_evidence_bundles = true    # Enable evidence bundle generation
+
+# Path slicing configuration
+path_slicing_max_nodes = 80       # Maximum nodes in path slices
+# path_slicing_cache_dir = "./cache/paths"  # Path slice cache directory
+
+# Symbolic exploration configuration (requires Mythril)
+symbolic_engine = "mythril"       # Symbolic execution engine
+symbolic_max_time_per_function = 60     # Timeout per function (seconds)
+symbolic_max_total_time = 300     # Total symbolic analysis budget (seconds)
+symbolic_max_paths = 10           # Maximum paths to explore per function
+symbolic_max_functions = 5        # Maximum functions to analyze
+symbolic_trigger_min_severity = "MEDIUM"  # Minimum severity to trigger symbolic analysis
+symbolic_trigger_min_cluster_size = 2     # Minimum cluster size to trigger
+symbolic_trigger_min_significance = 0.55  # Minimum cluster significance to trigger
+
+# Correlation configuration
+# correlation_patterns_file = "./patterns.yml"  # Custom correlation patterns file
+correlation_location_proximity_lines = 10      # Line proximity for location clustering
+correlation_confidence_boost_multi_source = 0.2  # Confidence boost for multi-detector findings
+correlation_severity_elevation_threshold = 3   # Findings needed for severity elevation
+
+# Scoring configuration
+scoring_enable_transparent_weights = true      # Export factor weights
+scoring_export_sub_factors = true             # Export sub-factor contributions
+scoring_proxy_awareness = true                # Include proxy/delegatecall factors
+scoring_upgrade_slot_influence = true         # Include upgrade slot risk factors
 
 [output]
 format = "table"                  # Output format: table, json, sarif
@@ -51,19 +84,32 @@ fail_on_findings = false          # Exit non-zero if any findings
 sarif = false                     # Generate SARIF output
 markdown_summary = false          # Generate markdown summary
 
-# Example environment variable overrides:
+# Phase 4 CLI examples:
+#
+# Basic analysis with Phase 4 features:
+# vulnhuntr scan ./contracts --path-slicing --scoring
+#
+# Full Phase 4 analysis with symbolic exploration:
+# vulnhuntr scan ./contracts --path-slicing --symbolic --scoring --symbolic-timeout 120
+#
+# Export evidence bundles:
+# vulnhuntr export-evidence ./contracts evidence.json
+#
+# Enhanced detector listing with patterns:
+# vulnhuntr list-detectors --show-patterns --show-categories --show-metadata
+#
+# Performance profiling:
+# vulnhuntr profile ./contracts --output profile.json
+#
+# Explain specific finding:
+# vulnhuntr explain-finding "oracle_manipulation_001" --format markdown
+#
+# Environment variable overrides:
 # VULNHUNTR_LLM_ENABLED=true
 # VULNHUNTR_LLM_API_KEY=sk-...
+# VULNHUNTR_ANALYSIS_ENABLE_SYMBOLIC_EXPLORATION=true
+# VULNHUNTR_ANALYSIS_SYMBOLIC_MAX_TIME_PER_FUNCTION=120
 # VULNHUNTR_FAIL_ON_SEVERITY=HIGH
 # VULNHUNTR_OUTPUT_JSON_FILE=./results.json
 # VULNHUNTR_DETECTORS_ENABLED="cross_chain_*,category:oracle"
 # VULNHUNTR_DETECTORS_DISABLED="*_experimental"
-
-# Example CLI usage:
-# vulnhuntr scan ./contracts --config vulnhuntr.toml
-# vulnhuntr scan ./contracts --enable "category:cross_chain" --disable "*_experimental"
-# vulnhuntr scan ./contracts --fail-on-severity HIGH --json results.json
-# vulnhuntr list-detectors --json
-# vulnhuntr --explain-selector "category:*"
-# vulnhuntr --config-dump
-# vulnhuntr --print-config-hash

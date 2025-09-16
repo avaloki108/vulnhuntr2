@@ -200,7 +200,7 @@ class Finding:
 
 @dataclass
 class CorrelatedFinding:
-    """A group of related findings with elevated metadata."""
+    """A group of related findings with elevated metadata and evidence bundles."""
     
     primary_finding: Finding
     related_findings: List[Finding] = field(default_factory=list)
@@ -214,6 +214,12 @@ class CorrelatedFinding:
     pattern_description: Optional[str] = None
     attack_vector: Optional[str] = None
     impact_analysis: Optional[str] = None
+    
+    # Phase 4 enhancements
+    cluster_metadata: Optional[Any] = None  # ClusterMetadata from correlation
+    evidence_bundle: Optional[Any] = None   # EvidenceBundle from correlation
+    significance: float = 0.0               # Pattern significance score
+    deterministic_id: Optional[str] = None  # Deterministic cluster ID
     
     @property
     def effective_severity(self) -> Severity:
@@ -233,7 +239,7 @@ class CorrelatedFinding:
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
-        return {
+        result = {
             "primary_finding": self.primary_finding.to_dict(),
             "related_findings": [f.to_dict() for f in self.related_findings],
             "correlation_type": self.correlation_type,
@@ -243,3 +249,27 @@ class CorrelatedFinding:
             "attack_vector": self.attack_vector,
             "impact_analysis": self.impact_analysis,
         }
+        
+        # Phase 4 enhancements
+        if self.significance > 0:
+            result["significance"] = self.significance
+        if self.deterministic_id:
+            result["deterministic_id"] = self.deterministic_id
+        if self.cluster_metadata:
+            result["cluster_metadata"] = {
+                "cluster_id": getattr(self.cluster_metadata, 'cluster_id', ''),
+                "kind": getattr(self.cluster_metadata, 'kind', ''),
+                "pattern_name": getattr(self.cluster_metadata, 'pattern_name', None),
+                "significance": getattr(self.cluster_metadata, 'significance', 0.0)
+            }
+        if self.evidence_bundle:
+            result["evidence_bundle"] = {
+                "evidence_id": getattr(self.evidence_bundle, 'evidence_id', ''),
+                "finding_id": getattr(self.evidence_bundle, 'finding_id', ''),
+                "variables_of_interest": getattr(self.evidence_bundle, 'variables_of_interest', []),
+                "rationale": getattr(self.evidence_bundle, 'rationale', ''),
+                "path_slices": getattr(self.evidence_bundle, 'path_slices', []),
+                "symbolic_traces": getattr(self.evidence_bundle, 'symbolic_traces', [])
+            }
+        
+        return result

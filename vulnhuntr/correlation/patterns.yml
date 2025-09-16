@@ -1,0 +1,164 @@
+# Correlation Patterns for Vulnerability Clustering
+# Schema entries: name, kind, member_detectors (list), join_keys (list of attribute selectors), 
+# min_members, weights {base, guard_absence, external_call_density, var_overlap}, notes
+
+patterns:
+  # Oracle manipulation attack chain
+  - name: "oracle-manipulation-chain"
+    kind: "composite-attack"
+    member_detectors:
+      - "logic_oracle_mismatch"
+      - "flashloan_invariant_breach" 
+      - "gas_sensitive_branching"
+    join_keys:
+      - "state_vars.price"
+      - "state_vars.oracle"
+      - "function_name"
+    min_members: 2
+    weights:
+      base: 0.8
+      guard_absence: 0.2
+      external_call_density: 0.3
+      var_overlap: 0.4
+    notes: "Price oracle manipulation combined with flash loan attacks for profit extraction"
+
+  # Privilege escalation composite pattern
+  - name: "privilege-escalation-composite"
+    kind: "access-control-bypass"
+    member_detectors:
+      - "privilege_escalation_path"
+      - "eventless_critical_action"
+      - "cross_chain_relay_replay"
+    join_keys:
+      - "state_vars.owner"
+      - "state_vars.admin"
+      - "modifier_patterns.onlyOwner"
+      - "function_name"
+    min_members: 2
+    weights:
+      base: 0.9
+      guard_absence: 0.4
+      external_call_density: 0.1
+      var_overlap: 0.5
+    notes: "Administrative privilege escalation with insufficient event logging"
+
+  # Flash loan attack chain
+  - name: "flashloan-invariant-chain"
+    kind: "atomic-exploit"
+    member_detectors:
+      - "flashloan_invariant_breach"
+      - "reentrancy_heuristic"
+      - "logic_oracle_mismatch"
+    join_keys:
+      - "state_vars.balance"
+      - "state_vars.reserves"
+      - "external_calls.flash_loan"
+      - "function_name"
+    min_members: 2
+    weights:
+      base: 0.85
+      guard_absence: 0.3
+      external_call_density: 0.4
+      var_overlap: 0.3
+    notes: "Flash loan exploits with reentrancy and oracle manipulation"
+
+  # Allowlist drift pattern
+  - name: "allowlist-drift"
+    kind: "state-inconsistency"
+    member_detectors:
+      - "privilege_escalation_path"
+      - "eventless_critical_action"
+      - "domain_separator_reuse"
+    join_keys:
+      - "state_vars.whitelist"
+      - "state_vars.allowlist"
+      - "state_vars.authorized"
+      - "signature_schemes.domain"
+    min_members: 2
+    weights:
+      base: 0.7
+      guard_absence: 0.3
+      external_call_density: 0.1
+      var_overlap: 0.6
+    notes: "Allowlist state inconsistencies with signature replay vulnerabilities"
+
+  # Price feed footgun pattern
+  - name: "price-feed-footgun"
+    kind: "oracle-dependency"
+    member_detectors:
+      - "logic_oracle_mismatch"
+      - "gas_sensitive_branching"
+      - "flashloan_invariant_breach"
+    join_keys:
+      - "state_vars.price_feed"
+      - "state_vars.oracle_addr"
+      - "external_calls.price_data"
+      - "conditional_paths.price_check"
+    min_members: 2
+    weights:
+      base: 0.75
+      guard_absence: 0.2
+      external_call_density: 0.3
+      var_overlap: 0.4
+    notes: "Price feed dependency with gas manipulation and flash loan attack vectors"
+
+  # Cross-chain bridge exploitation
+  - name: "bridge-exploitation-chain"
+    kind: "cross-chain-attack"
+    member_detectors:
+      - "cross_chain_relay_replay"
+      - "domain_separator_reuse"
+      - "eventless_critical_action"
+    join_keys:
+      - "state_vars.bridge_state"
+      - "state_vars.nonce"
+      - "signature_schemes.chain_id"
+      - "cross_chain_calls"
+    min_members: 2
+    weights:
+      base: 0.8
+      guard_absence: 0.3
+      external_call_density: 0.2
+      var_overlap: 0.5
+    notes: "Cross-chain bridge vulnerabilities with replay attacks and insufficient logging"
+
+  # Reentrancy compound pattern
+  - name: "reentrancy-compound"
+    kind: "reentrancy-chain"
+    member_detectors:
+      - "reentrancy_heuristic"
+      - "flashloan_invariant_breach"
+      - "gas_sensitive_branching"
+    join_keys:
+      - "external_calls.low_level"
+      - "state_vars.balance"
+      - "state_mutations.after_call"
+      - "gas_patterns.limit_dependency"
+    min_members: 2
+    weights:
+      base: 0.85
+      guard_absence: 0.4
+      external_call_density: 0.5
+      var_overlap: 0.3
+    notes: "Compound reentrancy vulnerabilities with gas manipulation and flash loan integration"
+
+  # Governance attack pattern
+  - name: "governance-manipulation"
+    kind: "governance-attack"
+    member_detectors:
+      - "privilege_escalation_path"
+      - "domain_separator_reuse"
+      - "eventless_critical_action"
+      - "gas_sensitive_branching"
+    join_keys:
+      - "state_vars.voting_power"
+      - "state_vars.proposal_state"
+      - "signature_schemes.vote_hash"
+      - "function_modifiers.governance"
+    min_members: 3
+    weights:
+      base: 0.9
+      guard_absence: 0.4
+      external_call_density: 0.1
+      var_overlap: 0.6
+    notes: "Governance manipulation through voting power concentration and signature reuse"
