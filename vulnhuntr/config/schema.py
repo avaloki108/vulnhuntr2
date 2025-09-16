@@ -41,6 +41,7 @@ class OutputConfig:
     format: str = "table"  # table, json, sarif
     json_file: Optional[Path] = None
     correlated_json_file: Optional[Path] = None
+    sarif_file: Optional[Path] = None  # Phase 5: SARIF export
     min_severity: str = "INFO"
     show_code: bool = True
     show_references: bool = True
@@ -55,9 +56,58 @@ class ReportingConfig:
     fail_on_confidence: Optional[float] = None
     fail_on_finding_count: Optional[int] = None
     
-    # Future placeholders
-    sarif: bool = False
+    # Phase 5 enhancements
+    sarif: bool = False  # Generate SARIF output
+    github_code_scanning: bool = False  # GitHub Advanced Security integration
     markdown_summary: bool = False
+
+
+@dataclass
+class PluginConfig:
+    """Configuration for plugin system (Phase 5)."""
+    
+    # Plugin system control
+    enable_plugins: bool = False  # Disabled by default
+    plugin_dirs: List[Path] = field(default_factory=list)
+    
+    # Time budgets (ms)
+    detector_init_timeout: int = 750
+    enrich_timeout: int = 1500
+    postprocess_timeout: int = 1500
+    
+    # Memory guards (MB)
+    memory_guard_threshold_mb: int = 100
+    
+    # Plugin selection
+    enabled_plugins: List[str] = field(default_factory=list)
+    disabled_plugins: List[str] = field(default_factory=list)
+
+
+@dataclass
+class TriageConfig:
+    """Configuration for AI/LLM triage layer (Phase 5)."""
+    
+    # Triage control (disabled by default)
+    enable: bool = False
+    
+    # Candidate selection
+    max_findings: int = 10
+    min_severity: str = "MEDIUM"
+    
+    # Model configuration
+    provider: str = "openai"
+    model: str = "gpt-4"
+    temperature: float = 0.3
+    max_tokens: int = 1000
+    timeout: int = 30
+    
+    # Caching
+    enable_cache: bool = True
+    cache_dir: Optional[Path] = None
+    
+    # Redaction
+    redact_addresses: bool = True
+    redact_secrets: bool = True
 
 
 @dataclass
@@ -75,6 +125,10 @@ class AnalysisConfig:
     enable_symbolic_exploration: bool = False
     enable_scoring: bool = True
     enable_evidence_bundles: bool = True
+    
+    # Phase 5 enhancements
+    enable_incremental: bool = False  # Disabled by default
+    diff_base: Optional[str] = None   # Git ref for diff-based scanning
     
     # Path slicing configuration
     path_slicing_max_nodes: int = 80
@@ -114,6 +168,10 @@ class RunConfig:
     llm: LLMConfig = field(default_factory=LLMConfig)
     output: OutputConfig = field(default_factory=OutputConfig)
     reporting: ReportingConfig = field(default_factory=ReportingConfig)
+    
+    # Phase 5 new systems (disabled by default)
+    plugins: PluginConfig = field(default_factory=PluginConfig)
+    triage: TriageConfig = field(default_factory=TriageConfig)
     
     # Config management
     config_file: Optional[Path] = None
