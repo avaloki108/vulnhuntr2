@@ -11,6 +11,71 @@ from ..core.models import Severity
 
 
 @dataclass
+class MultiChainConfig:
+    """Configuration for multi-chain analysis."""
+    
+    enable: bool = False
+    config: str = "chains.yaml"
+
+
+@dataclass
+class InvariantsConfig:
+    """Configuration for invariant DSL."""
+    
+    enable: bool = False
+    file: str = "invariants.yml"
+    auto_suggest: bool = True
+    max_suggested: int = 12
+    symbolic_timeout_s: int = 6
+    fuzz_timeout_s: int = 15
+
+
+@dataclass
+class SimulationConfig:
+    """Configuration for exploit scenario simulation."""
+    
+    enable: bool = False
+    max_targets: int = 5
+
+
+@dataclass
+class RiskModelConfig:
+    """Configuration for risk probability model."""
+    
+    enable: bool = False
+    coefficients: Dict[str, float] = field(default_factory=lambda: {
+        "reachability": 1.1,
+        "invariant": 1.3, 
+        "economic": 0.9,
+        "consensus": 0.4
+    })
+
+
+@dataclass
+class PolicyConfig:
+    """Configuration for policy engine."""
+    
+    enable: bool = False
+    file: str = "policy.yml"
+
+
+@dataclass
+class AttestationConfig:
+    """Configuration for plugin attestation."""
+    
+    enable: bool = False
+    lock_file: str = "plugins.lock"
+    fail_on_mismatch: bool = False
+
+
+@dataclass
+class KnowledgeGraphConfig:
+    """Configuration for knowledge graph."""
+    
+    enable: bool = False
+
+
+@dataclass
 class DetectorSelection:
     """Configuration for detector selection and filtering."""
     
@@ -108,6 +173,9 @@ class TriageConfig:
     # Redaction
     redact_addresses: bool = True
     redact_secrets: bool = True
+    
+    # Phase 6: Two-model consensus
+    consensus_two_model: bool = True
 
 
 @dataclass
@@ -172,6 +240,15 @@ class RunConfig:
     # Phase 5 new systems (disabled by default)
     plugins: PluginConfig = field(default_factory=PluginConfig)
     triage: TriageConfig = field(default_factory=TriageConfig)
+    
+    # Phase 6 new systems (disabled by default)
+    multi_chain: MultiChainConfig = field(default_factory=MultiChainConfig)
+    invariants: InvariantsConfig = field(default_factory=InvariantsConfig)
+    simulation: SimulationConfig = field(default_factory=SimulationConfig)
+    risk_model: RiskModelConfig = field(default_factory=RiskModelConfig)
+    policy: PolicyConfig = field(default_factory=PolicyConfig)
+    attestation: AttestationConfig = field(default_factory=AttestationConfig)
+    kg: KnowledgeGraphConfig = field(default_factory=KnowledgeGraphConfig)
     
     # Config management
     config_file: Optional[Path] = None

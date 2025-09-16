@@ -146,6 +146,21 @@ class Finding:
     invariant_suggestion: Optional[str] = None
     poc_code: Optional[str] = None
     
+    # Phase 6: Multi-chain context
+    multi_chain: Optional[Dict[str, Any]] = None  # chains, cross_domain_paths
+    
+    # Phase 6: Economic simulation
+    economic: Optional[Dict[str, Any]] = None  # capital_required_estimate, payoff_bounds, feasibility
+    
+    # Phase 6: Invariants
+    invariants: List[Dict[str, Any]] = field(default_factory=list)  # name, status, method, category, etc.
+    
+    # Phase 6: Risk model
+    risk_model: Optional[Dict[str, Any]] = None  # p_exploit, expected_loss_estimate, modeling_version
+    
+    # Phase 6: Policy compliance
+    policy: Optional[Dict[str, Any]] = None  # violations, compliant
+    
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
@@ -167,6 +182,11 @@ class Finding:
             "tags": list(self.tags),
             "invariant_suggestion": self.invariant_suggestion,
             "poc_code": self.poc_code,
+            "multi_chain": self.multi_chain,
+            "economic": self.economic,
+            "invariants": self.invariants,
+            "risk_model": self.risk_model,
+            "policy": self.policy,
         }
     
     @classmethod
@@ -195,6 +215,11 @@ class Finding:
             tags=tags,
             invariant_suggestion=data.get("invariant_suggestion"),
             poc_code=data.get("poc_code"),
+            multi_chain=data.get("multi_chain"),
+            economic=data.get("economic"),
+            invariants=data.get("invariants", []),
+            risk_model=data.get("risk_model"),
+            policy=data.get("policy"),
         )
 
 
