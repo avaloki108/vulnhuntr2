@@ -6,12 +6,29 @@ plugin hash enforcement, and economic feasibility gating.
 """
 from __future__ import annotations
 
-import yaml
 import json
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any, Union
 from pathlib import Path
 from enum import Enum
+
+
+def _yaml_load(path: Path) -> Dict[str, Any]:
+    try:
+        import yaml  # type: ignore
+    except Exception as e:
+        raise RuntimeError("pyyaml is required for policy parsing") from e
+    with open(path, 'r', encoding='utf-8') as f:
+        return yaml.safe_load(f) or {}
+
+
+def _yaml_dump(path: Path, data: Dict[str, Any]) -> None:
+    try:
+        import yaml  # type: ignore
+    except Exception as e:
+        raise RuntimeError("pyyaml is required to write policy files") from e
+    with open(path, 'w', encoding='utf-8') as f:
+        yaml.dump(data, f, default_flow_style=False, indent=2)
 
 from .models import Severity, Finding
 
@@ -246,8 +263,7 @@ class PolicyLoader:
             return PolicyConfiguration()  # Default policy
         
         try:
-            with open(self.policy_file, 'r') as f:
-                data = yaml.safe_load(f)
+            data = _yaml_load(self.policy_file)
             
             return PolicyConfiguration.from_dict(data)
             
@@ -257,8 +273,7 @@ class PolicyLoader:
     def save_policy(self, policy: PolicyConfiguration) -> None:
         """Save policy to file."""
         try:
-            with open(self.policy_file, 'w') as f:
-                yaml.dump(policy.to_dict(), f, default_flow_style=False, indent=2)
+            _yaml_dump(self.policy_file, policy.to_dict())
         except Exception as e:
             raise RuntimeError(f"Failed to save policy file: {e}")
     

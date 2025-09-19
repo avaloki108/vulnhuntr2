@@ -134,8 +134,20 @@ def match_detectors(all_detectors: List[Any], selector: str) -> List[Any]:
     matched = []
     
     for detector in all_detectors:
-        if detector.matches_selector(selector):
-            matched.append(detector)
+        # Prefer detector-provided matcher; else use fallback
+        matcher = getattr(detector, 'matches_selector', None)
+        if callable(matcher):
+            if matcher(selector):
+                matched.append(detector)
+        else:
+            name = getattr(detector, 'name', '')
+            category = getattr(detector, 'category', '')
+            if selector.startswith("category:"):
+                pattern = selector.split(":", 1)[1]
+                if pattern == "*" or fnmatch.fnmatch(category, pattern):
+                    matched.append(detector)
+            elif name == selector or fnmatch.fnmatch(name, selector):
+                matched.append(detector)
     
     return matched
 

@@ -4,26 +4,32 @@ Core orchestration engine with Phase 5 enhancements.
 from __future__ import annotations
 
 import os
+import inspect
 import logging
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import time
 
-from .registry import get_registered_detectors
-from .models import Finding, ScanContext, ContractInfo, Severity
+from .registry import get_registered_detectors, discover_detectors
+from .models import Finding, ScanContext, Contract, Severity
 from .triage import TriageEngine, TriageResult
 from .incremental import IncrementalScanner, IncrementalScanContext
 from .sarif_export import SarifExporter
 from .pattern_engine import PatternEngine
 from ..plugins import PluginManager
-from ..config.schema import RunConfig
+from ..config.settings import Settings
 
 
 class Orchestrator:
     """Enhanced orchestrator for running vulnerability detection with Phase 5 features."""
 
-    def __init__(self, detectors: List[Any] = None, config: Optional[RunConfig] = None) -> None:
-        self.detectors = detectors if detectors is not None else get_registered_detectors()
+    def __init__(self, detectors: List[Any] = None, config: Optional[Settings] = None) -> None:
+        # Auto-discover detectors if not provided
+        if detectors is None:
+            discover_detectors()
+            self.detectors = get_registered_detectors()
+        else:
+            self.detectors = detectors
         self.config = config
         self.logger = logging.getLogger(__name__)
         
@@ -37,41 +43,39 @@ class Orchestrator:
         if config:
             self._initialize_phase5_components(config)
 
-    def _initialize_phase5_components(self, config: RunConfig) -> None:
+    def _initialize_phase5_components(self, config: Settings) -> None:
         """Initialize Phase 5 components based on configuration."""
         
-        # Plugin system
-        if config.plugins.enable_plugins:
-            self.plugin_manager = PluginManager({
-                'detector_init_timeout': config.plugins.detector_init_timeout,
-                'enrich_timeout': config.plugins.enrich_timeout,
-                'postprocess_timeout': config.plugins.postprocess_timeout,
-                'memory_guard_threshold_mb': config.plugins.memory_guard_threshold_mb
-            })
-            self.logger.info("Plugin system enabled")
+        # Plugin system - disabled for now as we don't have plugins config in Settings yet
+        # if hasattr(config, 'plugins') and config.plugins.enable_plugins:
+        #     self.plugin_manager = PluginManager({...})
+        #     self.logger.info("Plugin system enabled")
         
         # AI Triage
-        if config.triage.enable:
-            self.triage_engine = TriageEngine(config.triage)
-            self.logger.info("AI triage system enabled")
+        if config.llm.enabled:
+            try:
+                self.triage_engine = TriageEngine(config.llm)
+                self.logger.info("AI triage system enabled")
+            except Exception as e:
+                self.logger.warning(f"Failed to initialize triage engine: {e}")
         
-        # Incremental scanning
-        if config.analysis.enable_incremental:
-            self.incremental_scanner = IncrementalScanner(config.analysis.diff_base)
-            self.logger.info(f"Incremental scanning enabled (base: {config.analysis.diff_base})")
+        # Incremental scanning - disabled for now
+        # if hasattr(config.analysis, 'enable_incremental') and config.analysis.enable_incremental:
+        #     self.incremental_scanner = IncrementalScanner(config.analysis.diff_base)
+        #     self.logger.info(f"Incremental scanning enabled")
         
         # SARIF export
         if config.reporting.sarif or config.output.format == "sarif":
-            self.sarif_exporter = SarifExporter()
-            self.logger.info("SARIF export enabled")
+            try:
+                self.sarif_exporter = SarifExporter()
+                self.logger.info("SARIF export enabled")
+            except Exception as e:
+                self.logger.warning(f"Failed to initialize SARIF exporter: {e}")
         
-        # Pattern engine
-        if hasattr(config, 'pattern_dirs') and config.pattern_dirs:
-            self.pattern_engine = PatternEngine(
-                pattern_dirs=config.pattern_dirs,
-                enable_hot_reload=getattr(config, 'enable_hot_reload', False)
-            )
-            self.logger.info("Pattern engine enabled")
+        # Pattern engine - disabled for now
+        # if hasattr(config, 'pattern_dirs') and config.pattern_dirs:
+        #     self.pattern_engine = PatternEngine(...)
+        #     self.logger.info("Pattern engine enabled")
 
     def collect_sources(self, target: Path) -> List[Path]:
         if target.is_file():
@@ -113,20 +117,46 @@ class Orchestrator:
         
         sources = self.collect_sources(context.target_path)
         all_findings: List[Finding] = []
-
+        
         # Filter sources for incremental scanning
         if incremental_context:
-            filtered_sources = []
+            filtered_sources: List[Path] = []
             for src in sources:
                 if self.incremental_scanner.should_scan_file(str(src), incremental_context):
                     filtered_sources.append(src)
             sources = filtered_sources
             self.logger.info(f"Incremental filtering: scanning {len(sources)} files")
-
-        # Parse contracts (mock implementation for now)
-        for src in sources:
-            contract_info = self._parse_contract_mock(src)
-            context.contracts.append(contract_info)
+        
+        # Optional: Slither enrichment if enabled in config
+        if getattr(self.config, 'analysis', None) and getattr(self.config.analysis, 'use_slither', False):
+            try:
+                from ..parsing.slither_adapter import run_slither
+                slither_result = run_slither(str(context.target_path))
+                if slither_result is not None:
+                    # Map contracts (minimal) and store raw
+                    for c in slither_result.contracts:
+                        context.contracts.append(
+                            Contract(
+                                name=c.name,
+                                file_path=c.file,
+                                line_start=c.line_start,
+                                line_end=c.line_end,
+                                variables=[],
+                                is_abstract=False,
+                                inherits_from=[],
+                                source=""
+                            )
+                        )
+                    context.tool_artifacts['slither'] = slither_result.raw_data
+                    self.logger.info("Slither enrichment completed")
+            except Exception as e:
+                self.logger.warning(f"Slither enrichment skipped: {e}")
+ 
+        # Parse contracts (mock implementation for now) if none populated
+        if not context.contracts:
+            for src in sources:
+                contract_info = self._parse_contract_mock(src)
+                context.contracts.append(contract_info)
 
         # Phase 5: Apply pattern engine if available
         if self.pattern_engine:
@@ -150,31 +180,52 @@ class Orchestrator:
                     self.logger.error(f"Plugin detector failed: {e}")
 
         # Run traditional detectors with new interface
-        for det in self.detectors:
+        for det_cls in self.detectors:
             try:
+                # Instantiate the detector
+                det = det_cls()
+                
                 # Check if detector uses new interface
                 if hasattr(det, 'analyze') and callable(det.analyze):
-                    # Try new interface first
-                    try:
-                        findings = list(det.analyze(context))
-                        all_findings.extend(findings)
-                    except TypeError:
-                        # Fall back to old interface
+                    # Check method signature to determine interface
+                    sig = inspect.signature(det.analyze)
+                    
+                    if "context" in sig.parameters or "scan_context" in sig.parameters:
+                        # New interface - pass ScanContext
+                        try:
+                            findings = list(det.analyze(context))
+                            all_findings.extend(findings)
+                        except Exception as e:
+                            self.logger.error(f"Error with new interface for {det.name}: {e}", exc_info=True)
+                            # Create error finding
+                            error_finding = Finding(
+                                detector="orchestrator", 
+                                title=f"Detector Error: {det.name}",
+                                file=str(context.target_path),
+                                line=0,
+                                severity=Severity.INFO,
+                                code="",
+                                description=f"Error running detector {det.name}: {e}"
+                            )
+                            all_findings.append(error_finding)
+                    else:
+                        # Old interface - iterate sources
                         for src in sources:
                             try:
                                 content = src.read_text(encoding="utf-8", errors="ignore")
                                 old_findings = det.analyze(str(src), content)
                                 
-                                # Convert old findings to new format
+                                # Convert old findings to new format  
                                 for old_finding in old_findings:
                                     new_finding = self._convert_old_finding(old_finding)
                                     all_findings.append(new_finding)
                                     
                             except Exception as e:
                                 # Create error finding
+                                self.logger.error(f"Error running detector {det.name} on {src}: {e}", exc_info=True)
                                 error_finding = Finding(
                                     detector="orchestrator",
-                                    title="Detector Error",
+                                    title=f"Detector Error: {det.name}",
                                     file=str(src),
                                     line=0,
                                     severity=Severity.INFO,
@@ -192,7 +243,7 @@ class Orchestrator:
                     line=0,
                     severity=Severity.INFO,
                     code="",
-                    description=f"Failed to initialize detector {getattr(det, 'name', 'unknown')}: {e}"
+                    description=f"Failed to initialize detector {getattr(det_cls, 'name', getattr(det_cls, '__name__', 'unknown'))}: {e}"
                 )
                 all_findings.append(error_finding)
 
@@ -258,7 +309,7 @@ class Orchestrator:
         content = f"{finding.detector}:{finding.title}:{finding.file}:{finding.line}"
         return hashlib.sha256(content.encode()).hexdigest()[:16]
 
-    def _parse_contract_mock(self, source_path: Path) -> ContractInfo:
+    def _parse_contract_mock(self, source_path: Path) -> Contract:
         """Mock contract parsing - to be replaced with real Slither/tree-sitter integration."""
         
         try:
@@ -276,15 +327,48 @@ class Orchestrator:
             contract_name = contract_match.group(1)
         
         # Create mock contract info
-        return ContractInfo(
+        return Contract(
             name=contract_name,
             file_path=str(source_path),
-            inheritance=[],
-            functions=[],
-            state_variables=[],
-            events=[],
-            modifiers=[]
+            line_start=0,
+            line_end=0,
+            variables=[],
+            is_abstract=False,
+            inherits_from=[],
+            source=content
         )
+
+def scan_directory(target: str, config=None) -> List[Finding]:
+    """Scan a directory for vulnerabilities (wrapper for CLI compatibility)."""
+    from pathlib import Path
+    target_path = Path(target)
+    
+    # Initialize orchestrator
+    orchestrator = Orchestrator(config=config)
+    
+    # Create scan context
+    context = ScanContext(target_path=target_path)
+    
+    # Run enhanced scan
+    findings = orchestrator.run_enhanced(context)
+    return findings
+
+
+def scan_file(target: str, config=None) -> List[Finding]:
+    """Scan a single file for vulnerabilities (wrapper for CLI compatibility)."""
+    from pathlib import Path
+    target_path = Path(target)
+    
+    # Initialize orchestrator  
+    orchestrator = Orchestrator(config=config)
+    
+    # Create scan context
+    context = ScanContext(target_path=target_path)
+    
+    # Run enhanced scan
+    findings = orchestrator.run_enhanced(context)
+    return findings
+
 
     def _convert_old_finding(self, old_finding) -> Finding:
         """Convert old Finding format to new Finding format."""

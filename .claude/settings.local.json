@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m vulnhuntr scan:*)",
+      "Bash(cat:*)",
+      "Bash(python:*)",
+      "Read(//home/dok/.claude/commands/**)",
+      "Bash(pip install:*)",
+      "Bash(curl:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

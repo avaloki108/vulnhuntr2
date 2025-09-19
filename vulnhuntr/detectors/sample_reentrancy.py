@@ -46,9 +46,9 @@ class ReentrancyHeuristic(HeuristicDetector):
     def _setup_patterns(self):
         """Setup detection patterns for reentrancy vulnerabilities."""
         
-        # Pattern 1: External calls
+        # Pattern 1: External calls (including modern syntax with {value: amount})
         self.add_pattern(
-            regex=r"\.call\s*\(",
+            regex=r"\.call(\{[^}]*\})?\s*\(",
             title="Potential reentrancy-sensitive external call",
             description=(
                 "External call detected. Ensure state changes occur "

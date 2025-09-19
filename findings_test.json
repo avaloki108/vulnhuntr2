@@ -1,0 +1,564 @@
+{
+  "meta": {
+    "version": "0.1.0",
+    "total_findings": 37,
+    "detectors_enabled": 19,
+    "config_hash": "cli-compat",
+    "gating": {
+      "triggered": false,
+      "reasons": []
+    }
+  },
+  "findings": [
+    {
+      "detector": "reentrancy_heuristic",
+      "title": "Potential reentrancy-sensitive external call",
+      "severity": "MEDIUM",
+      "file": "test_vulnerable_contract.sol",
+      "line": 66,
+      "code": "(bool success,) = msg.sender.call{value: msg.value / 100}(\"\");",
+      "confidence": 0.6,
+      "tags": [
+        "reentrancy",
+        "external_call"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "reentrancy_heuristic",
+      "title": "Potential reentrancy-sensitive external call",
+      "severity": "MEDIUM",
+      "file": "test_vulnerable_contract.sol",
+      "line": 77,
+      "code": "(bool success,) = msg.sender.call{value: payout}(\"\");",
+      "confidence": 0.6,
+      "tags": [
+        "reentrancy",
+        "external_call"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "reentrancy_heuristic",
+      "title": "Delegatecall detected",
+      "severity": "HIGH",
+      "file": "test_vulnerable_contract.sol",
+      "line": 124,
+      "code": "(bool success,) = proposal.target.delegatecall(proposal.data);",
+      "confidence": 0.8,
+      "tags": [
+        "reentrancy",
+        "external_call"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "reentrancy_heuristic",
+      "title": "Ether transfer call detected",
+      "severity": "LOW",
+      "file": "test_vulnerable_contract.sol",
+      "line": 199,
+      "code": "payable(msg.sender).transfer(address(this).balance);",
+      "confidence": 0.5,
+      "tags": [
+        "reentrancy",
+        "external_call"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "cross_chain_relay_replay",
+      "title": "Cross-chain message missing nonce validation",
+      "severity": "HIGH",
+      "file": "test_vulnerable_contract.sol",
+      "line": 210,
+      "code": "function bridgeTransfer(",
+      "confidence": 0.8,
+      "tags": [
+        "replay",
+        "bridge",
+        "cross_chain"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "cross_chain_relay_replay",
+      "title": "Signature verification missing chain ID",
+      "severity": "MEDIUM",
+      "file": "test_vulnerable_contract.sol",
+      "line": 220,
+      "code": "require(verifySignature(hash, signature), \"Invalid signature\");",
+      "confidence": 0.7,
+      "tags": [
+        "replay",
+        "bridge",
+        "cross_chain"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "cross_chain_relay_replay",
+      "title": "Signature verification missing chain ID",
+      "severity": "MEDIUM",
+      "file": "test_vulnerable_contract.sol",
+      "line": 225,
+      "code": "function verifySignature(bytes32 hash, bytes calldata signature) internal pure returns (bool) {",
+      "confidence": 0.7,
+      "tags": [
+        "replay",
+        "bridge",
+        "cross_chain"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "cross_chain_relay_replay",
+      "title": "Bridge function missing chain ID validation",
+      "severity": "HIGH",
+      "file": "test_vulnerable_contract.sol",
+      "line": 210,
+      "code": "function bridgeTransfer(\n        address to,\n        uint256 amount,\n        uint256 nonce,\n        bytes calldata signature\n    ) external {\n        // Missing chain ID validation - can be replayed o",
+      "confidence": 0.8,
+      "tags": [
+        "replay",
+        "bridge",
+        "cross_chain"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "cross_chain_relay_replay",
+      "title": "Bridge function missing message uniqueness check",
+      "severity": "HIGH",
+      "file": "test_vulnerable_contract.sol",
+      "line": 210,
+      "code": "function bridgeTransfer(\n        address to,\n        uint256 amount,\n        uint256 nonce,\n        bytes calldata signature\n    ) external {\n        // Missing chain ID validation - can be replayed o",
+      "confidence": 0.9,
+      "tags": [
+        "replay",
+        "bridge",
+        "cross_chain"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "cross_chain_relay_replay",
+      "title": "Bridge function missing proper authorization",
+      "severity": "MEDIUM",
+      "file": "test_vulnerable_contract.sol",
+      "line": 210,
+      "code": "function bridgeTransfer(\n        address to,\n        uint256 amount,\n        uint256 nonce,\n        bytes calldata signature\n    ) external {\n        // Missing chain ID validation - can be replayed o",
+      "confidence": 0.7,
+      "tags": [
+        "replay",
+        "bridge",
+        "cross_chain"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "cross_chain_relay_replay",
+      "title": "Cross-chain contract missing nonce mechanism",
+      "severity": "HIGH",
+      "file": "test_vulnerable_contract.sol",
+      "line": 1,
+      "code": "contract with",
+      "confidence": 0.7,
+      "tags": [
+        "replay",
+        "bridge",
+        "cross_chain"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "eventless_critical_action",
+      "title": "Ownership change without event",
+      "severity": "HIGH",
+      "file": "test_vulnerable_contract.sol",
+      "line": 51,
+      "code": "owner = msg.sender;",
+      "confidence": 0.9,
+      "tags": [
+        "events",
+        "logging",
+        "transparency"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "eventless_critical_action",
+      "title": "Token balance change without Transfer event",
+      "severity": "MEDIUM",
+      "file": "test_vulnerable_contract.sol",
+      "line": 62,
+      "code": "balances[msg.sender] += shares;",
+      "confidence": 0.8,
+      "tags": [
+        "events",
+        "logging",
+        "transparency"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "eventless_critical_action",
+      "title": "Token balance change without Transfer event",
+      "severity": "MEDIUM",
+      "file": "test_vulnerable_contract.sol",
+      "line": 80,
+      "code": "balances[msg.sender] -= shares;",
+      "confidence": 0.8,
+      "tags": [
+        "events",
+        "logging",
+        "transparency"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "eventless_critical_action",
+      "title": "Token balance change without Transfer event",
+      "severity": "MEDIUM",
+      "file": "test_vulnerable_contract.sol",
+      "line": 138,
+      "code": "balances[msg.sender] += balances[user];",
+      "confidence": 0.8,
+      "tags": [
+        "events",
+        "logging",
+        "transparency"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "eventless_critical_action",
+      "title": "Token balance change without Transfer event",
+      "severity": "MEDIUM",
+      "file": "test_vulnerable_contract.sol",
+      "line": 139,
+      "code": "balances[user] = 0;",
+      "confidence": 0.8,
+      "tags": [
+        "events",
+        "logging",
+        "transparency"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "eventless_critical_action",
+      "title": "Token balance change without Transfer event",
+      "severity": "MEDIUM",
+      "file": "test_vulnerable_contract.sol",
+      "line": 162,
+      "code": "balances[msg.sender] -= amountIn;",
+      "confidence": 0.8,
+      "tags": [
+        "events",
+        "logging",
+        "transparency"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "eventless_critical_action",
+      "title": "Token balance change without Transfer event",
+      "severity": "MEDIUM",
+      "file": "test_vulnerable_contract.sol",
+      "line": 163,
+      "code": "balances[msg.sender] += amountOut;",
+      "confidence": 0.8,
+      "tags": [
+        "events",
+        "logging",
+        "transparency"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "eventless_critical_action",
+      "title": "Configuration change without event",
+      "severity": "LOW",
+      "file": "test_vulnerable_contract.sol",
+      "line": 166,
+      "code": "exchangeRate = price;",
+      "confidence": 0.6,
+      "tags": [
+        "events",
+        "logging",
+        "transparency"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "eventless_critical_action",
+      "title": "Configuration change without event",
+      "severity": "LOW",
+      "file": "test_vulnerable_contract.sol",
+      "line": 178,
+      "code": "exchangeRate = newPrice;",
+      "confidence": 0.6,
+      "tags": [
+        "events",
+        "logging",
+        "transparency"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "eventless_critical_action",
+      "title": "Token balance change without Transfer event",
+      "severity": "MEDIUM",
+      "file": "test_vulnerable_contract.sol",
+      "line": 204,
+      "code": "balances[to] += amount;",
+      "confidence": 0.8,
+      "tags": [
+        "events",
+        "logging",
+        "transparency"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "eventless_critical_action",
+      "title": "Token balance change without Transfer event",
+      "severity": "MEDIUM",
+      "file": "test_vulnerable_contract.sol",
+      "line": 222,
+      "code": "balances[to] += amount;",
+      "confidence": 0.8,
+      "tags": [
+        "events",
+        "logging",
+        "transparency"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "eventless_critical_action",
+      "title": "Critical withdrawal function without events",
+      "severity": "MEDIUM",
+      "file": "test_vulnerable_contract.sol",
+      "line": 70,
+      "code": "function withdraw(uint256 shares) external {\n        require(balances[msg.sender] >= shares, \"Insufficient balance\");\n\n        uint256 price = IOracle(oracle).getPrice(address(this));\n        uint256 ",
+      "confidence": 0.7,
+      "tags": [
+        "events",
+        "logging",
+        "transparency"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "eventless_critical_action",
+      "title": "Critical withdrawal function without events",
+      "severity": "MEDIUM",
+      "file": "test_vulnerable_contract.sol",
+      "line": 197,
+      "code": "function emergencyWithdraw() external onlyAdmin {\n        // Admin can drain contract\n        payable(msg.sender).transfer(address(this).balance);\n    }",
+      "confidence": 0.7,
+      "tags": [
+        "events",
+        "logging",
+        "transparency"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "eventless_critical_action",
+      "title": "Critical deposit function without events",
+      "severity": "MEDIUM",
+      "file": "test_vulnerable_contract.sol",
+      "line": 57,
+      "code": "function deposit() external payable {\n        uint256 price = IOracle(oracle).getPrice(address(this));\n        uint256 shares = (msg.value * 1e18) / price;\n\n        // State change before external cal",
+      "confidence": 0.7,
+      "tags": [
+        "events",
+        "logging",
+        "transparency"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "eventless_critical_action",
+      "title": "Critical transfer function without events",
+      "severity": "MEDIUM",
+      "file": "test_vulnerable_contract.sol",
+      "line": 210,
+      "code": "function bridgeTransfer(\n        address to,\n        uint256 amount,\n        uint256 nonce,\n        bytes calldata signature\n    ) external {\n        // Missing chain ID validation - can be replayed o",
+      "confidence": 0.7,
+      "tags": [
+        "events",
+        "logging",
+        "transparency"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "eventless_critical_action",
+      "title": "Critical minting function without events",
+      "severity": "MEDIUM",
+      "file": "test_vulnerable_contract.sol",
+      "line": 203,
+      "code": "function mint(address to, uint256 amount) external onlyOwner {\n        balances[to] += amount;\n        // Forgot to update totalSupply - breaks invariant\n        // totalSupply += amount;\n    }",
+      "confidence": 0.7,
+      "tags": [
+        "events",
+        "logging",
+        "transparency"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "eventless_critical_action",
+      "title": "Critical emergency action function without events",
+      "severity": "MEDIUM",
+      "file": "test_vulnerable_contract.sol",
+      "line": 197,
+      "code": "function emergencyWithdraw() external onlyAdmin {\n        // Admin can drain contract\n        payable(msg.sender).transfer(address(this).balance);\n    }",
+      "confidence": 0.7,
+      "tags": [
+        "events",
+        "logging",
+        "transparency"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "eventless_critical_action",
+      "title": "Access control operation without OwnershipTransferred event",
+      "severity": "MEDIUM",
+      "file": "test_vulnerable_contract.sol",
+      "line": 51,
+      "code": "owner =",
+      "confidence": 0.8,
+      "tags": [
+        "events",
+        "logging",
+        "transparency"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "flashloan_invariant_breach",
+      "title": "Flash loan repayment not enforced",
+      "severity": "HIGH",
+      "file": "test_vulnerable_contract.sol",
+      "line": 12,
+      "code": "interface IFlashLoanReceiver {",
+      "confidence": 0.8,
+      "tags": [
+        "flashloan",
+        "atomicity",
+        "invariant"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "logic_oracle_mismatch",
+      "title": "Division by oracle price without zero check",
+      "severity": "HIGH",
+      "file": "test_vulnerable_contract.sol",
+      "line": 59,
+      "code": "uint256 shares = (msg.value * 1e18) / price;",
+      "confidence": 0.8,
+      "tags": [
+        "oracle",
+        "price_manipulation"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "logic_oracle_mismatch",
+      "title": "Large value calculation with oracle price",
+      "severity": "MEDIUM",
+      "file": "test_vulnerable_contract.sol",
+      "line": 59,
+      "code": "uint256 shares = (msg.value * 1e18) / price;",
+      "confidence": 0.6,
+      "tags": [
+        "oracle",
+        "price_manipulation"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "privilege_escalation_path",
+      "title": "Owner/admin assignment without validation",
+      "severity": "HIGH",
+      "file": "test_vulnerable_contract.sol",
+      "line": 51,
+      "code": "owner = msg.sender;",
+      "confidence": 0.8,
+      "tags": [
+        "access_control",
+        "privilege_escalation",
+        "authorization"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "privilege_escalation_path",
+      "title": "Delegatecall to untrusted address",
+      "severity": "CRITICAL",
+      "file": "test_vulnerable_contract.sol",
+      "line": 124,
+      "code": "(bool success,) = proposal.target.delegatecall(proposal.data);",
+      "confidence": 0.9,
+      "tags": [
+        "access_control",
+        "privilege_escalation",
+        "authorization"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "privilege_escalation_path",
+      "title": "Critical function withdraw lacks access control",
+      "severity": "HIGH",
+      "file": "test_vulnerable_contract.sol",
+      "line": 70,
+      "code": "function withdraw(uint256 shares) external {",
+      "confidence": 0.9,
+      "tags": [
+        "access_control",
+        "privilege_escalation",
+        "authorization"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "privilege_escalation_path",
+      "title": "Critical function bridgeTransfer lacks access control",
+      "severity": "HIGH",
+      "file": "test_vulnerable_contract.sol",
+      "line": 210,
+      "code": "function bridgeTransfer(\n        address to,\n        uint256 amount,\n        uint256 nonce,\n        bytes calldata signature\n    ) external {",
+      "confidence": 0.9,
+      "tags": [
+        "access_control",
+        "privilege_escalation",
+        "authorization"
+      ],
+      "recommendation": ""
+    },
+    {
+      "detector": "privilege_escalation_path",
+      "title": "Delegatecall without target validation",
+      "severity": "CRITICAL",
+      "file": "test_vulnerable_contract.sol",
+      "line": 124,
+      "code": "delegatecall(proposal.data)",
+      "confidence": 0.9,
+      "tags": [
+        "access_control",
+        "privilege_escalation",
+        "authorization"
+      ],
+      "recommendation": ""
+    }
+  ],
+  "correlated_findings": []
+}

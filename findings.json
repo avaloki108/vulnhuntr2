@@ -1,0 +1,170 @@
+{
+  "scan_info": {
+    "timestamp": "2025-09-18T00:51:56.341009",
+    "tool": "vulnhuntr2",
+    "version": "0.1.0"
+  },
+  "summary": {
+    "total_findings": 14,
+    "severity_counts": {
+      "MEDIUM": 6,
+      "HIGH": 8
+    }
+  },
+  "findings": [
+    {
+      "detector": "reentrancy_heuristic",
+      "title": "Potential reentrancy-sensitive external call",
+      "description": "External call detected. Ensure state changes occur before external interactions and employ reentrancy guards.",
+      "severity": "MEDIUM",
+      "file": "test_contract.sol",
+      "line": 17,
+      "code": "(bool success, ) = msg.sender.call{value: amount}(\"\");",
+      "confidence": 0.6,
+      "category": "reentrancy"
+    },
+    {
+      "detector": "eventless_critical_action",
+      "title": "Ownership change without event",
+      "description": "Contract ownership change lacks proper event emission",
+      "severity": "HIGH",
+      "file": "test_contract.sol",
+      "line": 9,
+      "code": "owner = msg.sender;",
+      "confidence": 0.9,
+      "category": "transparency"
+    },
+    {
+      "detector": "eventless_critical_action",
+      "title": "Token balance change without Transfer event",
+      "description": "Token balance modification lacks Transfer event emission",
+      "severity": "MEDIUM",
+      "file": "test_contract.sol",
+      "line": 20,
+      "code": "balances[msg.sender] -= amount; // State update after external call",
+      "confidence": 0.8,
+      "category": "transparency"
+    },
+    {
+      "detector": "eventless_critical_action",
+      "title": "Ownership change without event",
+      "description": "Contract ownership change lacks proper event emission",
+      "severity": "HIGH",
+      "file": "test_contract.sol",
+      "line": 25,
+      "code": "owner = newOwner; // Anyone can become owner!",
+      "confidence": 0.9,
+      "category": "transparency"
+    },
+    {
+      "detector": "eventless_critical_action",
+      "title": "Token balance change without Transfer event",
+      "description": "Token balance modification lacks Transfer event emission",
+      "severity": "MEDIUM",
+      "file": "test_contract.sol",
+      "line": 34,
+      "code": "balances[msg.sender] += msg.value;",
+      "confidence": 0.8,
+      "category": "transparency"
+    },
+    {
+      "detector": "eventless_critical_action",
+      "title": "Critical withdrawal function without events",
+      "description": "Function withdraw performs withdrawal without emitting events",
+      "severity": "MEDIUM",
+      "file": "test_contract.sol",
+      "line": 13,
+      "code": "function withdraw(uint256 amount) external {\n        require(balances[msg.sender] >= amount, \"Insufficient balance\");\n        \n        // Vulnerable: external call before state update\n        (bool su",
+      "confidence": 0.7,
+      "category": "transparency"
+    },
+    {
+      "detector": "eventless_critical_action",
+      "title": "Critical deposit function without events",
+      "description": "Function deposit performs deposit without emitting events",
+      "severity": "MEDIUM",
+      "file": "test_contract.sol",
+      "line": 33,
+      "code": "function deposit() external payable {\n        balances[msg.sender] += msg.value;\n    }",
+      "confidence": 0.7,
+      "category": "transparency"
+    },
+    {
+      "detector": "eventless_critical_action",
+      "title": "Access control operation without OwnershipTransferred event",
+      "description": "Access control operation lacks OwnershipTransferred event emission",
+      "severity": "MEDIUM",
+      "file": "test_contract.sol",
+      "line": 25,
+      "code": "owner =",
+      "confidence": 0.8,
+      "category": "transparency"
+    },
+    {
+      "detector": "privilege_escalation_path",
+      "title": "Owner/admin assignment without validation",
+      "description": "Owner or admin role assignment lacks proper validation",
+      "severity": "HIGH",
+      "file": "test_contract.sol",
+      "line": 9,
+      "code": "owner = msg.sender;",
+      "confidence": 0.8,
+      "category": "access_control"
+    },
+    {
+      "detector": "privilege_escalation_path",
+      "title": "Owner/admin assignment without validation",
+      "description": "Owner or admin role assignment lacks proper validation",
+      "severity": "HIGH",
+      "file": "test_contract.sol",
+      "line": 25,
+      "code": "owner = newOwner; // Anyone can become owner!",
+      "confidence": 0.8,
+      "category": "access_control"
+    },
+    {
+      "detector": "privilege_escalation_path",
+      "title": "Critical function withdraw lacks access control",
+      "description": "Critical function withdraw is external but lacks access control modifiers",
+      "severity": "HIGH",
+      "file": "test_contract.sol",
+      "line": 13,
+      "code": "function withdraw(uint256 amount) external {",
+      "confidence": 0.9,
+      "category": "access_control"
+    },
+    {
+      "detector": "privilege_escalation_path",
+      "title": "Critical function setOwner lacks access control",
+      "description": "Critical function setOwner is external but lacks access control modifiers",
+      "severity": "HIGH",
+      "file": "test_contract.sol",
+      "line": 24,
+      "code": "function setOwner(address newOwner) external {",
+      "confidence": 0.9,
+      "category": "access_control"
+    },
+    {
+      "detector": "privilege_escalation_path",
+      "title": "Privilege-granting function setOwner lacks admin protection",
+      "description": "Function setOwner can grant privileges without admin authorization",
+      "severity": "HIGH",
+      "file": "test_contract.sol",
+      "line": 24,
+      "code": "function setOwner(address newOwner) external {",
+      "confidence": 0.8,
+      "category": "access_control"
+    },
+    {
+      "detector": "privilege_escalation_path",
+      "title": "Critical function destroy lacks access control",
+      "description": "Critical function destroy is external but lacks access control modifiers",
+      "severity": "HIGH",
+      "file": "test_contract.sol",
+      "line": 29,
+      "code": "function destroy() external {",
+      "confidence": 0.9,
+      "category": "access_control"
+    }
+  ]
+}

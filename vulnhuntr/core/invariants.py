@@ -6,12 +6,20 @@ and execution backends for symbolic and fuzz testing.
 """
 from __future__ import annotations
 
-import yaml
 import re
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any, Union
 from pathlib import Path
 from enum import Enum
+
+
+def _load_yaml_safe(path: Path) -> Dict[str, Any]:
+    try:
+        import yaml  # type: ignore
+    except Exception as e:
+        raise RuntimeError("pyyaml is required to parse invariants files") from e
+    with open(path, 'r') as f:
+        return yaml.safe_load(f) or {}
 
 
 class InvariantType(Enum):
@@ -110,9 +118,8 @@ class InvariantParser:
             return []
             
         try:
-            with open(file_path, 'r') as f:
-                data = yaml.safe_load(f)
-                
+            data = _load_yaml_safe(file_path)
+            
             invariants = []
             for inv_data in data.get('invariants', []):
                 invariant = self._parse_invariant(inv_data)
@@ -519,11 +526,16 @@ class InvariantEngine:
             ]
         }
         
-        with open(file_path, 'w') as f:
+        # Lazy import to avoid hard dependency during import time
+        try:
+            import yaml  # type: ignore
+        except Exception as e:
+            raise RuntimeError("pyyaml is required to write invariants files") from e
+        with open(file_path, 'w', encoding='utf-8') as f:
             yaml.dump(sample_invariants, f, default_flow_style=False, indent=2)
     
     def get_invariant_stats(self, invariants: List[InvariantDefinition], 
-                           results: List[InvariantValidationResult]) -> Dict[str, Any]:
+                            results: List[InvariantValidationResult]) -> Dict[str, Any]:
         """Generate statistics about invariants."""
         stats = {
             "declared": len([inv for inv in invariants if not inv.auto_suggested]),

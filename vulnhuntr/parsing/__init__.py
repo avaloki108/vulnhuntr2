@@ -1,1 +1,3 @@
-"""Parsing modules for smart contract analysis."""
+"""
+Parser modules for Solidity code analysis.
+"""

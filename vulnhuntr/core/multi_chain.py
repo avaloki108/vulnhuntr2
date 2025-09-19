@@ -6,10 +6,27 @@ correlation for multi-chain vulnerability analysis.
 """
 from __future__ import annotations
 
-import yaml
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set, Any
 from pathlib import Path
+
+
+def _yaml_load(path: Path) -> Dict[str, Any]:
+    try:
+        import yaml  # type: ignore
+    except Exception as e:
+        raise RuntimeError("pyyaml is required for multi-chain config parsing") from e
+    with open(path, 'r', encoding='utf-8') as f:
+        return yaml.safe_load(f) or {}
+
+
+def _yaml_dump(path: Path, data: Dict[str, Any]) -> None:
+    try:
+        import yaml  # type: ignore
+    except Exception as e:
+        raise RuntimeError("pyyaml is required to write multi-chain config") from e
+    with open(path, 'w', encoding='utf-8') as f:
+        yaml.dump(data, f, default_flow_style=False, indent=2)
 
 
 @dataclass
@@ -133,9 +150,8 @@ class MultiChainContextLoader:
             return False
             
         try:
-            with open(self.config_path, 'r') as f:
-                config = yaml.safe_load(f)
-                
+            config = _yaml_load(self.config_path)
+            
             # Load chains
             for chain_data in config.get('chains', []):
                 chain = ChainMetadata(
@@ -250,8 +266,7 @@ class MultiChainContextLoader:
             ]
         }
         
-        with open(self.config_path, 'w') as f:
-            yaml.dump(sample_config, f, default_flow_style=False, indent=2)
+        _yaml_dump(self.config_path, sample_config)
 
 
 class MultiChainCorrelator:

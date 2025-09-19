@@ -11,7 +11,7 @@ import subprocess
 import logging
 import re
 
-from ..core.models import ScanContext, ContractInfo, ContractFunction
+from ..core.models import ScanContext, Contract, Function
 
 
 @dataclass
@@ -109,7 +109,7 @@ class IncrementalScanner:
         relative_path = self._get_relative_path(file_path, incremental_context.base_context.target_path)
         return (relative_path, function_name) in incremental_context.changed_functions
     
-    def filter_contracts_for_incremental(self, contracts: List[ContractInfo], incremental_context: IncrementalScanContext) -> List[ContractInfo]:
+    def filter_contracts_for_incremental(self, contracts: List[Contract], incremental_context: IncrementalScanContext) -> List[Contract]:
         """
         Filter contracts to only include those with changes.
         
@@ -136,7 +136,7 @@ class IncrementalScanner:
                             filtered_functions.append(func)
                     
                     # Create new contract with filtered functions
-                    filtered_contract = ContractInfo(
+                    filtered_contract = Contract(
                         name=contract.name,
                         file_path=contract.file_path,
                         functions=filtered_functions

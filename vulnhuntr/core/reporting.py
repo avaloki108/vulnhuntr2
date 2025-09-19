@@ -106,17 +106,21 @@ class EnhancedReportingEngine:
             exit_code, gating_reasons
         )
         
+        # Generate dynamic report title
+        report_title = self._generate_dynamic_title(display_findings)
+
         # Build comprehensive report object
         report = {
+            "title": report_title,
             "meta": metadata,
             "findings": [finding.to_dict() for finding in display_findings],
             "correlated_findings": [cf.to_dict() for cf in correlated_findings] if correlated_findings else [],
-            
+
             # Phase 4 enhancements
             "path_slices": self._serialize_path_slices(path_slices) if path_slices else [],
             "symbolic_traces": self._serialize_symbolic_traces(symbolic_traces) if symbolic_traces else [],
             "scoring_results": self._serialize_scoring_results(scoring_results) if scoring_results else [],
-            
+
             # Enhanced analysis metadata
             "analysis_summary": self._generate_analysis_summary(
                 display_findings, correlated_findings, path_slices, symbolic_traces
@@ -430,8 +434,8 @@ class EnhancedReportingEngine:
                 ]
                 if high_severity_findings:
                     reasons.append(
-                        f"Found {len(high_severity_findings)} findings >= {threshold_severity.value} "
-                        f"(fail_on_severity={threshold_severity.value})"
+                        f"Found {len(high_severity_findings)} findings >= {threshold_severity.name} "
+                        f"(fail_on_severity={threshold_severity.name})"
                     )
             except ValueError:
                 reasons.append(f"Invalid fail_on_severity value: {self.config.reporting.fail_on_severity}")
@@ -503,6 +507,61 @@ class EnhancedReportingEngine:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         with open(output_path, 'w') as f:
             json.dump(evidence_data, f, indent=2, default=str)
+
+    def _generate_dynamic_title(self, findings: List[Finding]) -> str:
+        """Generate dynamic report title with date, time, and scan summary"""
+        import os
+        from pathlib import Path
+
+        # Get current timestamp
+        now = datetime.now()
+        date_str = now.strftime("%Y-%m-%d")
+        time_str = now.strftime("%H:%M:%S UTC")
+
+        # Determine scan target from config or current directory
+        scan_target = "Unknown Target"
+        if hasattr(self.config, 'target_path') and self.config.target_path:
+            scan_target = Path(self.config.target_path).name
+        else:
+            # Fall back to current working directory name
+            scan_target = Path(os.getcwd()).name
+
+        # Generate findings summary
+        finding_count = len(findings)
+        if finding_count == 0:
+            findings_summary = "No vulnerabilities detected"
+        else:
+            # Count by severity
+            severity_counts = {}
+            for finding in findings:
+                severity = str(finding.severity.value).upper()
+                severity_counts[severity] = severity_counts.get(severity, 0) + 1
+
+            # Create summary string
+            severity_parts = []
+            for severity in ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO']:
+                count = severity_counts.get(severity, 0)
+                if count > 0:
+                    severity_parts.append(f"{count} {severity.lower()}")
+
+            if severity_parts:
+                findings_summary = f"{finding_count} vulnerabilities found: {', '.join(severity_parts)}"
+            else:
+                findings_summary = f"{finding_count} vulnerabilities found"
+
+        # Construct title
+        title = f"VulnHuntr Security Analysis Report - {scan_target} | {date_str} {time_str} | {findings_summary}"
+
+        return title
+
+    def get_optimal_output_format(self, findings: List[Finding]) -> str:
+        """Determine optimal output format based on findings and context"""
+        # For now, JSON is the most comprehensive format
+        # Could expand this logic based on findings complexity, number, etc.
+        if len(findings) > 0:
+            return "json"  # Rich data needs JSON
+        else:
+            return "table"  # Simple output for no findings
 
 
 # Backward compatibility
