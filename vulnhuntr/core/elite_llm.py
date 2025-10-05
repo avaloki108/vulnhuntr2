@@ -10,9 +10,15 @@ import logging
 from typing import Dict, Any, List, Optional, Union, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
-import aiohttp
 import time
 from abc import ABC, abstractmethod
+
+try:
+    import aiohttp
+    HAS_AIOHTTP = True
+except ImportError:
+    HAS_AIOHTTP = False
+    aiohttp = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
