@@ -12,7 +12,9 @@ def run_cli(*args: str):
 def test_list_detectors(tmp_path):
     result = run_cli("list-detectors")
     assert result.returncode == 0
-    assert "Available Detectors" in result.stdout
+    # Accept both old and new table titles
+    assert ("Available Detectors" in result.stdout or 
+            "Available Vulnerability Detectors" in result.stdout)
 
 
 def test_scan_json_output(tmp_path):

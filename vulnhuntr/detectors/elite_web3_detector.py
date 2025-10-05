@@ -2,52 +2,80 @@
 Elite Web3 Vulnerability Detector
 The ultimate smart contract vulnerability hunting system combining Slither with LLM intelligence.
 Implements the multi-agent architecture from elite-web3-audit.md
+
+Note: This detector requires optional dependencies. Install with: pip install vulnhuntr2[llm,full]
 """
 
-import asyncio
-import json
 import logging
-import os
-import subprocess
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
-import time
-from concurrent.futures import ThreadPoolExecutor
+from typing import List, Optional, Dict, Any, Tuple
 
 from vulnhuntr.detectors.base import BaseDetector
 from vulnhuntr.core.models import Finding, Severity
-from vulnhuntr.core.elite_llm import (
-    EliteLLMOrchestrator,
-    create_default_configs,
-    AgentResponse,
-    LLMConfig,
-    LLMProvider
-)
-from vulnhuntr.core.elite_scoring import (
-    EliteScoringEngine,
-    EliteVulnerability,
-    VulnerabilityCategory
-)
-from vulnhuntr.parsing.slither_adapter import SlitherAdapter
 
 logger = logging.getLogger(__name__)
+
+# Check for required dependencies
+try:
+    import asyncio
+    import json
+    import os
+    import subprocess
+    import time
+    from concurrent.futures import ThreadPoolExecutor
+    from vulnhuntr.core.elite_llm import (
+        EliteLLMOrchestrator,
+        create_default_configs,
+        AgentResponse,
+        LLMConfig,
+        LLMProvider,
+        HAS_AIOHTTP
+    )
+    from vulnhuntr.core.elite_scoring import (
+        EliteScoringEngine,
+        EliteVulnerability,
+        VulnerabilityCategory
+    )
+    from vulnhuntr.parsing.slither_adapter import SlitherAdapter
+    
+    DEPENDENCIES_AVAILABLE = HAS_AIOHTTP
+    MISSING_DEPS = [] if HAS_AIOHTTP else ["aiohttp"]
+except ImportError as e:
+    DEPENDENCIES_AVAILABLE = False
+    MISSING_DEPS = [str(e)]
+    # Create stub classes so module can be imported
+    EliteLLMOrchestrator = None  # type: ignore
+    create_default_configs = None  # type: ignore
+    LLMConfig = None  # type: ignore
 
 
 class EliteWeb3Detector(BaseDetector):
     """
     Elite Web3 vulnerability detector implementing the John Wick of security research.
     Silent, methodical, and absolutely relentless in pursuit of that one perfect vulnerability.
+    
+    Note: Requires optional dependencies (aiohttp). Install with: pip install vulnhuntr2[llm,full]
     """
 
     name = "elite_web3_detector"
-    description = "Elite multi-agent Web3 vulnerability hunter with LLM intelligence"
+    description = "Elite multi-agent Web3 vulnerability hunter with LLM intelligence (requires optional deps)"
     category = "elite"
     severity = Severity.CRITICAL
     confidence = "high"
 
-    def __init__(self, llm_configs: Optional[List[LLMConfig]] = None):
+    def __init__(self, llm_configs: Optional[List] = None):
         """Initialize the elite detector"""
         super().__init__()
+        
+        if not DEPENDENCIES_AVAILABLE:
+            logger.warning(
+                f"Elite Web3 Detector disabled - missing dependencies: {', '.join(MISSING_DEPS)}. "
+                "Install with: pip install vulnhuntr2[llm,full]"
+            )
+            self.enabled = False
+            return
+        
+        self.enabled = True
 
         # Initialize LLM orchestrator
         if llm_configs:
@@ -78,6 +106,10 @@ class EliteWeb3Detector(BaseDetector):
         Execute the complete elite Web3 audit protocol.
         This is where the magic happens.
         """
+        # Return empty if dependencies not available
+        if not DEPENDENCIES_AVAILABLE or not getattr(self, 'enabled', True):
+            return []
+        
         start_time = time.time()
         logger.info("🎯 INITIALIZING ELITE WEB3 VULNERABILITY RESEARCH SYSTEM v4.0")
         logger.info("Operational mode: John Wick style - silent, precise, relentless")
