@@ -2,6 +2,8 @@
 
 A practical smart contract vulnerability scanner focused on finding real security issues in Solidity code.
 
+**🚀 New user?** Start with the [Quick Start Guide](QUICKSTART.md)
+
 ## What It Does
 
 VulnHuntr2 scans Solidity smart contracts and identifies common vulnerability patterns across 19 different security categories. It's designed for security researchers, auditors, and developers who want to catch vulnerabilities before they make it to production.
