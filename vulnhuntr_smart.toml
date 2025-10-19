@@ -1,0 +1,61 @@
+# VulnHuntr2 Smart Configuration
+# Enhanced configuration for Ollama-powered holistic contract analysis
+
+[ollama]
+enabled = true
+model = "qwen2.5-coder:32b"  # Recommended for smart contract analysis
+base_url = "http://localhost:11434"
+timeout = 120
+temperature = 0.1  # Low for consistent analysis
+top_p = 0.9
+max_tokens = 4096
+stream = false
+keep_alive = "5m"
+
+[cross_contract]
+enabled = true
+max_contracts_per_analysis = 10
+relationship_depth = 3
+include_interfaces = true
+include_libraries = true
+detect_proxy_patterns = true
+
+[analysis]
+enable_correlation = true
+enable_poc_generation = true
+use_slither = false  # Optional: enable if Slither is installed
+enable_path_slicing = false
+enable_symbolic_exploration = false
+enable_scoring = true
+enable_evidence_bundles = true
+
+[detectors]
+# Enable all detectors for comprehensive analysis
+enabled = []  # Empty list means all detectors
+disabled = []
+min_confidence = 0.0
+max_confidence = 1.0
+
+[output]
+format = "table"
+show_code = true
+show_references = true
+min_severity = "INFO"
+
+[reporting]
+fail_on_findings = false
+fail_on_severity = "CRITICAL"
+fail_on_confidence = 0.8
+sarif = false
+markdown_summary = false
+
+# Alternative models for different use cases:
+#
+# For lighter weight analysis:
+# model = "codegemma:7b"
+#
+# For maximum capability (if you have resources):
+# model = "codellama:34b"
+#
+# For specialized code analysis:
+# model = "deepseek-coder:33b"

@@ -28,12 +28,33 @@ class DetectorConfig(BaseModel):
 class LLMConfig(BaseModel):
     """Configuration for LLM integration."""
     enabled: bool = False
-    provider: str = "openai"
+    provider: str = "openai"  # openai, anthropic, ollama
     model: str = "gpt-4"
     api_key: Optional[str] = None
     temperature: float = 0.7
     max_tokens: int = 2048
     timeout: int = 30
+
+class OllamaConfig(BaseModel):
+    """Configuration for Ollama local LLM."""
+    enabled: bool = False
+    model: str = "foundation"
+    base_url: str = "http://localhost:11434"
+    timeout: int = 120
+    temperature: float = 0.1
+    top_p: float = 0.9
+    max_tokens: int = 4096
+    stream: bool = False
+    keep_alive: str = "5m"
+
+class CrossContractConfig(BaseModel):
+    """Configuration for cross-contract analysis."""
+    enabled: bool = False
+    max_contracts_per_analysis: int = 10
+    relationship_depth: int = 3
+    include_interfaces: bool = True
+    include_libraries: bool = True
+    detect_proxy_patterns: bool = True
 
 class AnalysisConfig(BaseModel):
     """Configuration for analysis behavior."""
@@ -92,6 +113,8 @@ class Settings(BaseModel):
     """Main configuration settings."""
     detectors: DetectorConfig = Field(default_factory=DetectorConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
+    ollama: OllamaConfig = Field(default_factory=OllamaConfig)
+    cross_contract: CrossContractConfig = Field(default_factory=CrossContractConfig)
     analysis: AnalysisConfig = Field(default_factory=AnalysisConfig)
     output: OutputConfig = Field(default_factory=OutputConfig)
     reporting: ReportingConfig = Field(default_factory=ReportingConfig)

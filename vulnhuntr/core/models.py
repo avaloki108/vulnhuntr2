@@ -154,10 +154,15 @@ class CorrelatedFinding:
         }
 
 
+
 @dataclass
 class ScanContext:
     """Context for the analysis scan."""
     target_path: Union[str, "Path"]
+    # New fields for enhanced scan context
+    enable_poc_generation: bool = False
+    enable_correlation: bool = False
+    target_paths: Optional[List[str]] = None
     contracts: List[Contract] = field(default_factory=list)
     functions: List[Function] = field(default_factory=list)
     tool_artifacts: Dict[str, Any] = field(default_factory=dict)

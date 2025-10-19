@@ -6,7 +6,8 @@
       "Bash(python:*)",
       "Read(//home/dok/.claude/commands/**)",
       "Bash(pip install:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": [],
     "ask": []
