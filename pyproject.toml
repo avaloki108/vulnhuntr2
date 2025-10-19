@@ -30,6 +30,7 @@ smart = ["ollama>=0.3.0", "networkx>=3.0"]
 mutation = ["tree-sitter-languages>=1.10.2"]
 ml = ["transformers>=4.41.0", "tokenizers>=0.19.1"]
 static = ["slither-analyzer>=0.10.0"]
+elite = ["aiohttp>=3.9.0"]
 # mythril = ["mythril>=0.24.0"]  # Placeholder for future mythril integration
 full = [
     "openai>=1.35.0",
@@ -40,6 +41,7 @@ full = [
     "slither-analyzer>=0.10.0",
     "ollama>=0.3.0",
     "networkx>=3.0",
+    "aiohttp>=3.9.0",
 ]
 dev = [
     "pytest>=8.2.0",
