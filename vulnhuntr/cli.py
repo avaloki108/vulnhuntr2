@@ -1,3 +1,10 @@
+
+try:
+    import typer  # type: ignore
+    _USE_TYPER = True
+except Exception:
+    _USE_TYPER = False
+
 """
 Command-line interface for the vulnhuntr2 tool.
 """
@@ -8,12 +15,6 @@ from pathlib import Path
 import logging
 import json
 from typing import List, Optional, Dict, Any, Union, Tuple
-
-try:
-    import typer  # type: ignore
-    _USE_TYPER = True
-except Exception:
-    _USE_TYPER = False
 try:
     from rich.console import Console
     from rich.table import Table
@@ -56,6 +57,169 @@ else:
     app = None  # Fallback CLI will be used in __main__
 
 if _USE_TYPER:
+    @app.command()
+    def smart_scan(
+        target: str = typer.Argument(..., help="Path to smart contract or project directory"),
+        ollama_model: str = typer.Option("qwen2.5-coder:32b", "--model", help="Ollama model for analysis"),
+        ollama_url: str = typer.Option("http://localhost:11434", "--ollama-url", help="Ollama base URL"),
+        enable_cross_contract: bool = typer.Option(True, "--cross-contract/--no-cross-contract", help="Enable cross-contract analysis"),
+        output: Optional[str] = typer.Option(None, "--output", "-o", help="Output file for results (JSON)"),
+        verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
+        config_file: Optional[str] = typer.Option(None, "--config", help="Configuration file path"),
+    ):
+        """
+        🧠 SMART SCAN - Ollama-powered holistic contract analysis.
+
+        Uses local Ollama models for intelligent cross-contract vulnerability analysis.
+        Understands how contracts work together to find complex logic errors.
+
+        Features:
+        - Contract relationship mapping
+        - Cross-contract logic analysis
+        - Economic impact assessment
+        - Novel attack vector discovery
+        """
+        # Set up logging
+        if verbose:
+            logging.getLogger().setLevel(logging.DEBUG)
+
+        console.print(f"[cyan]🧠 VulnHuntr2 Smart Scan - Powered by Ollama[/cyan]")
+        console.print(f"[dim]Model: {ollama_model} | URL: {ollama_url}[/dim]")
+
+        # Import dependencies
+        try:
+            from vulnhuntr.core.enhanced_orchestrator import EnhancedVulnHuntrOrchestrator
+            from vulnhuntr.config.settings import Settings, OllamaConfig, CrossContractConfig
+        except ImportError as e:
+            console.print(f"[red]Error importing enhanced components: {e}[/red]")
+            sys.exit(1)
+
+        # Create enhanced settings
+        settings = Settings()
+
+        # Configure Ollama
+        settings.ollama = OllamaConfig(
+            enabled=True,
+            model=ollama_model,
+            base_url=ollama_url,
+            temperature=0.1,
+            max_tokens=4096,
+            timeout=120
+        )
+
+        # Configure cross-contract analysis
+        settings.cross_contract = CrossContractConfig(
+            enabled=enable_cross_contract,
+            max_contracts_per_analysis=10,
+            relationship_depth=3,
+            include_interfaces=True,
+            include_libraries=True,
+            detect_proxy_patterns=True
+        )
+
+        # Load config file if provided
+        if config_file:
+            from vulnhuntr.config.loader import ConfigLoader
+            loader = ConfigLoader()
+            settings = loader.load(config_file)
+
+        # Initialize enhanced orchestrator
+        console.print("[cyan]Initializing enhanced orchestrator...[/cyan]")
+        orchestrator = EnhancedVulnHuntrOrchestrator(settings)
+
+        # Check Ollama availability
+        if orchestrator.enhanced_llm_engine and orchestrator.enhanced_llm_engine.ollama_client:
+            if orchestrator.enhanced_llm_engine.ollama_client.is_available():
+                console.print(f"[green]✅ Ollama connected: {ollama_model}[/green]")
+            else:
+                console.print(f"[yellow]⚠️ Ollama not available. Ensure model {ollama_model} is pulled and Ollama is running.[/yellow]")
+                console.print(f"[dim]Try: ollama pull {ollama_model}[/dim]")
+        else:
+            console.print("[yellow]⚠️ Enhanced LLM engine not available[/yellow]")
+
+        # Resolve target path
+        target_path = Path(target)
+        if not target_path.exists():
+            console.print(f"[red]Error: Target path '{target}' does not exist[/red]")
+            sys.exit(1)
+
+        # Find contract files
+        contract_paths = []
+        if target_path.is_file() and target_path.suffix == '.sol':
+            contract_paths = [target_path]
+        elif target_path.is_dir():
+            contract_paths = list(target_path.rglob('*.sol'))
+        else:
+            console.print(f"[red]Error: Target must be a .sol file or directory containing .sol files[/red]")
+            sys.exit(1)
+
+        if not contract_paths:
+            console.print(f"[red]Error: No .sol files found in '{target}'[/red]")
+            sys.exit(1)
+
+        console.print(f"[cyan]Found {len(contract_paths)} contract files[/cyan]")
+
+        # Perform enhanced scan
+        try:
+            console.print("[cyan]🔍 Starting enhanced vulnerability scan...[/cyan]")
+
+            # Create scan context
+            from vulnhuntr.core.models import ScanContext
+            scan_context = ScanContext(
+                enable_poc_generation=True,
+                enable_correlation=enable_cross_contract,
+                target_paths=[str(p) for p in contract_paths]
+            )
+
+            # Run scan
+            results = orchestrator.scan_contracts(contract_paths, scan_context)
+
+            # Display results
+            findings = results.get('findings', [])
+            console.print(f"\n[green]✅ Scan complete! Found {len(findings)} vulnerabilities[/green]")
+
+            if cross_analysis := results.get('cross_contract_analysis'):
+                critical_findings = cross_analysis.get('critical_findings', [])
+                console.print(f"[yellow]🔗 Cross-contract analysis found {len(critical_findings)} complex vulnerabilities[/yellow]")
+
+            if ecosystem := results.get('contract_analysis'):
+                console.print(f"[blue]📊 Ecosystem analysis: {ecosystem.get('total_contracts', 0)} contracts analyzed[/blue]")
+
+            # Output results
+            if output:
+                output_path = Path(output)
+                with open(output_path, 'w') as f:
+                    json.dump(results, f, indent=2, default=str)
+                console.print(f"[green]📄 Results saved to {output_path}[/green]")
+
+            # Display summary table
+            if findings and _HAS_RICH and Table:
+                table = Table(title="Vulnerability Summary")
+                table.add_column("Detector", style="cyan")
+                table.add_column("Severity", style="red")
+                table.add_column("Title", style="white")
+                table.add_column("Contract", style="blue")
+
+                for finding in findings[:10]:  # Show first 10
+                    table.add_row(
+                        finding.detector,
+                        finding.severity.value,
+                        finding.title[:50] + "..." if len(finding.title) > 50 else finding.title,
+                        finding.contract_name or "N/A"
+                    )
+
+                console.print(table)
+
+                if len(findings) > 10:
+                    console.print(f"[dim]... and {len(findings) - 10} more findings[/dim]")
+
+        except Exception as e:
+            console.print(f"[red]Error during scan: {e}[/red]")
+            if verbose:
+                import traceback
+                console.print(traceback.format_exc())
+            sys.exit(1)
+
     @app.command()
     def elite(
         target: str = typer.Argument(..., help="Path to smart contract or project directory"),

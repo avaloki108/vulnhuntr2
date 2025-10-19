@@ -100,72 +100,6 @@ class BaseDetector(ABC):
             "references": self.references.copy(),
         }
     
-    def calculate_dynamic_confidence(self, code: str, title: str, description: str = "") -> float:
-        """
-        Calculate dynamic confidence based on code analysis and pattern strength.
-        """
-        import random
-
-        base_confidence = self.confidence
-
-        # Analyze code quality indicators
-        if code:
-            code_lines = code.split('\n')
-            code_lower = code.lower()
-
-            # Higher confidence for longer, more complex patterns
-            if len(code_lines) > 10:
-                base_confidence *= random.uniform(1.1, 1.25)
-            elif len(code_lines) > 5:
-                base_confidence *= random.uniform(1.05, 1.15)
-
-            # Security pattern indicators boost confidence
-            security_patterns = ['require(', 'assert(', 'modifier', 'onlyowner', 'msg.sender']
-            pattern_count = sum(1 for pattern in security_patterns if pattern in code_lower)
-            if pattern_count == 0:
-                base_confidence *= random.uniform(1.1, 1.3)  # No guards = higher confidence in vuln
-            elif pattern_count > 2:
-                base_confidence *= random.uniform(0.7, 0.9)  # Many guards = lower confidence
-
-            # Specific vulnerability indicators
-            vuln_indicators = ['external', 'public', 'call(', 'delegatecall', 'tx.origin',
-                             'block.timestamp', 'selfdestruct', 'suicide']
-            vuln_count = sum(1 for indicator in vuln_indicators if indicator in code_lower)
-            if vuln_count >= 2:
-                base_confidence *= random.uniform(1.15, 1.35)
-            elif vuln_count == 1:
-                base_confidence *= random.uniform(1.05, 1.2)
-
-        # Title analysis for confidence adjustment
-        title_lower = title.lower()
-        high_confidence_terms = ['unsafe', 'unprotected', 'missing', 'vulnerable', 'critical']
-        uncertain_terms = ['potential', 'possible', 'may', 'might', 'could']
-
-        if any(term in title_lower for term in high_confidence_terms):
-            base_confidence *= random.uniform(1.1, 1.25)
-        elif any(term in title_lower for term in uncertain_terms):
-            base_confidence *= random.uniform(0.8, 0.95)
-
-        # Description analysis
-        if description:
-            desc_lower = description.lower()
-            if 'proof of concept' in desc_lower or 'exploit' in desc_lower:
-                base_confidence *= random.uniform(1.2, 1.4)
-            elif 'unclear' in desc_lower or 'uncertain' in desc_lower:
-                base_confidence *= random.uniform(0.6, 0.8)
-
-        # Detector-specific confidence adjustments
-        if self.severity == Severity.CRITICAL:
-            base_confidence *= random.uniform(1.05, 1.15)
-        elif self.severity == Severity.LOW or self.severity == Severity.INFO:
-            base_confidence *= random.uniform(0.85, 0.95)
-
-        # Add realistic variance to avoid patterns
-        variance = random.uniform(-0.15, 0.15)
-        final_confidence = max(0.1, min(1.0, base_confidence + variance))
-
-        return round(final_confidence, 2)
-
     def create_finding(
         self,
         title: str,
@@ -181,12 +115,8 @@ class BaseDetector(ABC):
         **kwargs
     ) -> Finding:
         """
-        Create a Finding object with detector defaults and dynamic confidence calculation.
+        Create a Finding object with detector defaults.
         """
-        # Calculate dynamic confidence if not explicitly provided
-        if confidence is None:
-            confidence = self.calculate_dynamic_confidence(code, title, description or "")
-
         return Finding(
             detector=self.name,
             title=title,
@@ -195,7 +125,7 @@ class BaseDetector(ABC):
             severity=severity or self.severity,
             code=code,
             description=description,
-            confidence=confidence,
+            confidence=confidence or self.confidence,
             category=self.category,
             cwe_id=self.cwe_id,
             function_name=function_name,
